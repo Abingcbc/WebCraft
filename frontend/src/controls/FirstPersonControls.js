@@ -13,7 +13,6 @@ import {
 import {
     addNewBox
 } from "@/utils/BoxUtil";
-import es from "element-ui/src/locale/lang/es";
 
 var FirstPersonControls = function (scene, camera, domElement,
 									data, objects, worldWidth,
@@ -152,7 +151,7 @@ var FirstPersonControls = function (scene, camera, domElement,
 
     this.onKeyDown = function (event) {
 
-        //event.preventDefault();
+        // event.preventDefault();
 
         switch (event.keyCode) {
 
@@ -178,6 +177,7 @@ var FirstPersonControls = function (scene, camera, domElement,
 
 			case 27: /*esc*/
 				this.escHandler();
+				break;
 
         }
 
@@ -323,7 +323,7 @@ var FirstPersonControls = function (scene, camera, domElement,
                     verticalLookRatio = Math.PI / (this.verticalMax - this.verticalMin);
                 }
                 lon -= this.mouseX * actualLookSpeed;
-                if (this.lookVertical) lat -= this.mouseY * actualLookSpeed * verticalLookRatio;
+                lat -= this.mouseY * actualLookSpeed * verticalLookRatio;
                 lat = Math.max(-85, Math.min(85, lat));
                 var phi = MathUtils.degToRad(90 - lat);
                 var theta = MathUtils.degToRad(lon);

@@ -10,4 +10,5 @@ public class GameFile {
     private String createTime;
     private String updateTime;
     private String fileContent;
+    private int worldSize;
 }

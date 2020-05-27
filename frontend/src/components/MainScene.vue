@@ -7,6 +7,23 @@
             />
         </div>
         <img src="../assets/img/cross.png" class="cross" alt=""/>
+        <el-dialog
+                class="menu"
+                title="菜单"
+                :visible.sync="menuShow"
+                width="30%"
+                :before-close="closeMenu"
+        >
+            <el-button class="MineCraftButton">
+                <span>保存</span>
+            </el-button>
+            <el-button class="MineCraftButton">
+                <span>返回主页</span>
+            </el-button>
+            <el-button class="MineCraftButton">
+                <span>回到游戏</span>
+            </el-button>
+        </el-dialog>
     </div>
 </template>
 
@@ -21,7 +38,7 @@
         name: "MainScene",
         data() {
             return {
-                worldWidth: 20,
+                worldWidth: 10,
                 data: [], // 自定义的JSON格式，为了判断高度以及保存
                 objects: [], // three.js 中的对象，为了判断是否相交
                 status: {},
@@ -35,10 +52,18 @@
                     "/textures/stonebrick_carved.png"
                 ],
                 currentBlock: "",
+                menuShow: false
             }
         },
         mounted() {
-            this.generateHeight(this.worldWidth);
+            if (this.$route.type === 'new') {
+                this.generateHeight(this.worldWidth);
+            } else {
+                // this.$axios({
+                //     method: 'get',
+                //     url: ''
+                // })
+            }
             this.init();
             this.animate();
         },
@@ -89,7 +114,9 @@
                 container.appendChild(this.renderer.domElement);
 
                 this.controls = new FirstPersonControls(this.scene, this.camera,
-                    this.renderer.domElement, this.data, this.objects, this.worldWidth);
+                    this.renderer.domElement, this.data, this.objects, this.worldWidth,
+                    this.escHandler
+                );
 
                 this.controls.movementSpeed = 500;
                 this.controls.lookSpeed = 0.1;
@@ -203,8 +230,15 @@
             recoverViewChange() {
                 this.controls.releaseView();
             },
+            escHandler() {
+                this.pauseViewChange();
+                this.menuShow = true;
+            },
+            closeMenu() {
+                this.recoverViewChange();
+                this.menuShow = false;
+            }
         }
-        ,
     }
 </script>
 
@@ -248,6 +282,33 @@
         width: 60px;
         margin: 10px;
         user-select: none;
+    }
+
+    .menu {
+        text-align: center;
+    }
+
+    .el-dialog__header {
+        background-image: url('http://charliecowan.co.uk/mcbuttongenerator/button_center.png');
+        background-repeat: repeat;
+    }
+
+    .el-dialog__title {
+        background-image: url('http://charliecowan.co.uk/mcbuttongenerator/button_center.png');
+        background-repeat: repeat;
+        font-family: Minecraft;
+        color: white;
+        font-size: 30px;
+    }
+
+    .el-dialog__body {
+        background-image: url('http://charliecowan.co.uk/mcbuttongenerator/button_center.png');
+        background-repeat: repeat;
+    }
+
+    .menu .MineCraftButton {
+        width: 100px;
+        display: inline-block;
     }
 
 </style>
