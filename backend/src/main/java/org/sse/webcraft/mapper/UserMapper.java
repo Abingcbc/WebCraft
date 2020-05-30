@@ -14,10 +14,10 @@ import org.sse.webcraft.model.UserAuthInfo;
 @Mapper
 public interface UserMapper {
 
-    @Select("select username, password from User where username = #{username}")
+    @Select("select username, password from GameUser where username = #{username}")
     UserAuthInfo getUserAuthInfoByUsername(@Param("username") String username);
 
-    @Insert("insert into User\n" +
+    @Insert("insert into GameUser\n" +
             "value (#{username}, #{password});")
     int createNewUser(@Param("username") String username,
                        @Param("password") String password);

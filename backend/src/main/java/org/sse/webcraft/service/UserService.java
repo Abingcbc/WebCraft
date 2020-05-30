@@ -1,11 +1,13 @@
 package org.sse.webcraft.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.sse.webcraft.mapper.UserMapper;
 
+@Slf4j
 @Service
 public class UserService {
 
@@ -29,6 +31,7 @@ public class UserService {
 
     public boolean checkTokenPermission(Authentication authentication,
                                            String username) {
+        log.info(authentication.getPrincipal().toString());
         return authentication.getPrincipal() == username;
     }
 }

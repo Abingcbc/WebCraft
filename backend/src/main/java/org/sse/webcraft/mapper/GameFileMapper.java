@@ -10,11 +10,12 @@ import java.util.List;
 @Mapper
 public interface GameFileMapper {
 
-    @Insert("insert into GameFile(username, fileName, createTime, updateTime, fileContent)\n" +
-            "value (#{username}, #{fileName}, NOW(), NOW(), #{fileContent)};")
+    @Insert("insert into GameFile(username, fileName, createTime, updateTime, fileContent, worldSize)\n" +
+            "value (#{username}, #{fileName}, NOW(), NOW(), #{fileContent}, #{worldSize});")
     int createNewGameFile(@Param("username") String username,
                           @Param("fileName") String fileName,
-                          @Param("fileContent") String fileContent);
+                          @Param("fileContent") String fileContent,
+                          @Param("worldSize") int worldSize);
 
     @Select("select * from GameFile\n" +
             "where fileId = #{fileId};")

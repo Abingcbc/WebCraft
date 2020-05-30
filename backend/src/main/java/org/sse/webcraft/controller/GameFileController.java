@@ -1,5 +1,6 @@
 package org.sse.webcraft.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.sse.webcraft.mapper.GameFileMapper;
@@ -8,6 +9,7 @@ import org.sse.webcraft.model.GameFile;
 import javax.servlet.http.HttpServletResponse;
 import java.util.List;
 
+@Slf4j
 @RestController
 public class GameFileController {
 
@@ -17,9 +19,11 @@ public class GameFileController {
     @PostMapping("/create")
     public void createGameFile(@RequestBody GameFile gameFile,
                              HttpServletResponse response) {
+        log.info(String.valueOf(gameFile));
         gameFileMapper.createNewGameFile(gameFile.getUsername(),
                 gameFile.getFilename(),
-                gameFile.getFileContent());
+                gameFile.getFileContent(),
+                gameFile.getWorldSize());
     }
 
     @GetMapping("/file/{username}/{fileId}")

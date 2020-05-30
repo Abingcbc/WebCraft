@@ -1,5 +1,19 @@
 <template>
     <div id="main">
+        <el-alert
+                v-if="showSuccessAlert"
+                :title="successAlert"
+                center
+                show-icon
+                type="success">
+        </el-alert>
+        <el-alert
+                v-if="showErrorAlert"
+                :title="errorAlert"
+                center
+                show-icon
+                type="error">
+        </el-alert>
         <div style="padding-top: 100px; padding-bottom: 100px">
             <img src="../assets/webcraft.png" alt=""/>
         </div>
@@ -36,7 +50,7 @@
                     <el-input v-model="registerForm.password" show-password/>
                 </el-form-item>
                 <el-form-item label="重复密码">
-                    <el-input v-model="registerForm.password" show-password/>
+                    <el-input v-model="registerForm.repeatPassword" show-password/>
                 </el-form-item>
             </el-form>
             <div slot="footer" class="dialog-footer">
@@ -45,17 +59,17 @@
             </div>
         </el-dialog>
         <div>
-            <el-button class="MineCraftButton" v-if="logined">
+            <el-button class="MineCraftButton" @click="showCreate = true" v-if="logined">
                 <span>创建新的世界</span>
             </el-button>
         </div>
         <el-dialog title="创建新的世界" :visible.sync="showCreate">
             <el-form :model="createForm" style="width: 300px; margin: 0px auto">
                 <el-form-item label="世界名称">
-                    <el-input v-model="createForm.fileName" autocomplete="off" class="MineCraftInput"/>
+                    <el-input v-model="createForm.filename" autocomplete="off" class="MineCraftInput"/>
                 </el-form-item>
                 <el-form-item label="世界大小">
-                    <el-input-number v-model="createForm.worldSize" min="2" max="100"/>
+                    <el-input-number v-model="createForm.worldSize" :min="2" :max="100" :step="2"/>
                 </el-form-item>
             </el-form>
             <div slot="footer" class="dialog-footer">
@@ -116,12 +130,16 @@
                 logined: false,
                 showCreate: false,
                 createForm: {
-                    fileName: "",
+                    filename: "",
                     worldSize: "",
                 },
                 showLoad: false,
                 savedWorldList: [],
-                chosenFileIndex: 0
+                chosenFileIndex: 0,
+                successAlert: "",
+                errorAlert: "",
+                showSuccessAlert: false,
+                showErrorAlert: false
             }
         },
         mounted() {
@@ -132,16 +150,15 @@
                 if (localStorage.getItem("WebCraftToken")) {
                     this.logined = true;
                 }
-                this.logined = true;
             },
             login() {
                 this.$axios({
                     method: 'post',
-                    url: '/login',
+                    url: '/api/oauth/token',
                     headers: {
                         'Authorization': 'Basic YnJvd3NlcjpzZWNyZXQ='
                     },
-                    data: {
+                    params: {
                         'grant_type': 'password',
                         'username': this.loginForm.username,
                         'password': this.loginForm.password
@@ -154,28 +171,28 @@
                         this.logined = true;
                         window.location.href = "/";
                     } else {
-                        alert("用户名或密码错误！");
+                        this.alertError("用户名或密码错误！");
                     }
                 })
             },
             register() {
                 if (this.registerForm.password !== this.registerForm.repeatPassword) {
-                    alert("两次输入密码不一致！");
+                    this.alertError("两次输入密码不一致！");
                 } else {
                     this.$axios({
                         method: 'post',
-                        url: '/register',
+                        url: '/api/register',
                         data: {
                             'username': this.loginForm.username,
                             'password': this.loginForm.password
                         }
                     }).then((response) => {
                         if (response.status === 200) {
-                            alert("注册成功！");
+                            this.alertSuccess("注册成功！");
                             this.showRegister = false;
                             this.showLogin = true;
                         } else {
-                            alert("注册失败！");
+                            this.alertError("注册失败！");
                         }
                     })
                 }
@@ -190,27 +207,21 @@
                 })
             },
             load() {
-                // this.$axios({
-                //     method: 'get',
-                //     url: '/file/' + localStorage.getItem("WebCraftUser")
-                // }).then((response) => {
-                //     if (response.status === 200) {
-                //         this.savedWorldList = response.data;
-                //     }
-                // })
-                for (let i = 0; i < 10; i++) {
-                    this.savedWorldList.push({
-                        fileId: i,
-                        filename: 'ad',
-                        createTime: 'adasdf',
-                        updateTime: 'adfasdf',
-                        worldSize: 10
-                    })
-                }
+                console.log('bearer ' + localStorage.getItem("WebCraftToken"));
+                this.$axios({
+                    method: 'get',
+                    headers: {
+                        'Authorization': 'bearer ' + localStorage.getItem("WebCraftToken")
+                    },
+                    url: '/api/fileList/' + localStorage.getItem("WebCraftUser")
+                }).then((response) => {
+                    if (response.status === 200) {
+                        this.savedWorldList = response.data;
+                    }
+                });
                 this.showLoad = true;
             },
             chooseFile(index) {
-                console.log(index);
                 this.chosenFileIndex = index;
             },
             confirmFile() {
@@ -226,6 +237,20 @@
                 localStorage.removeItem("WebCraftToken");
                 localStorage.removeItem("WebCraftUser");
                 window.location.href = "/";
+            },
+            alertSuccess(message) {
+                this.successAlert = message;
+                this.showSuccessAlert = true;
+                setTimeout(() => {
+                    this.showSuccessAlert = false;
+                }, 2000);
+            },
+            alertError(message) {
+                this.errorAlert = message;
+                this.showErrorAlert = true;
+                setTimeout(() => {
+                    this.showErrorAlert = false;
+                }, 2000);
             }
         }
     }

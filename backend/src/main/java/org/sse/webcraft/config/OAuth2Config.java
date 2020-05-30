@@ -2,6 +2,7 @@ package org.sse.webcraft.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.config.annotation.configurers.ClientDetailsServiceConfigurer;
@@ -27,6 +28,9 @@ public class OAuth2Config extends AuthorizationServerConfigurerAdapter {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private RedisConnectionFactory redisConnectionFactory;
+
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     @Override
@@ -34,14 +38,13 @@ public class OAuth2Config extends AuthorizationServerConfigurerAdapter {
         clients.inMemory()
                 .withClient("browser")
                 .secret(encoder.encode("secret"))
-                .authorizedGrantTypes("refresh_token", "password")
-                .scopes("ui");
+                .authorizedGrantTypes("refresh_token", "password");
     }
 
     @Override
     public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
         endpoints.authenticationManager(authenticationManager)
-                .tokenStore(new InMemoryTokenStore())
+                .tokenStore(new RedisTokenStore(redisConnectionFactory))
                 .userDetailsService(authService);
     }
 

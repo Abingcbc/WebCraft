@@ -1,5 +1,13 @@
 <template>
     <div id="container">
+        <el-alert
+                title="成功加载世界"
+                type="success"
+                center
+                show-icon
+                v-if="loadSuccess"
+        >
+        </el-alert>
         <div class="blocker">
             <img class="blockerImg" v-for="blockUrl in blockerList"
                  :key="blockUrl" :src="blockUrl" alt=""
@@ -13,6 +21,7 @@
                 :visible.sync="menuShow"
                 width="30%"
                 :before-close="closeMenu"
+                v-loading.fullscreen.lock="fullscreenLoading"
         >
             <el-button class="MineCraftButton">
                 <span>保存</span>
@@ -38,6 +47,7 @@
         name: "MainScene",
         data() {
             return {
+                filename: "",
                 worldWidth: 10,
                 data: [], // 自定义的JSON格式，为了判断高度以及保存
                 objects: [], // three.js 中的对象，为了判断是否相交
@@ -52,12 +62,21 @@
                     "/textures/stonebrick_carved.png"
                 ],
                 currentBlock: "",
-                menuShow: false
+                menuShow: false,
+                fullscreenLoading: false,
+                loadSuccess: false
             }
         },
         mounted() {
-            if (this.$route.type === 'new') {
-                this.generateHeight(this.worldWidth);
+            // 非法进入
+            if (this.$route.params.type === undefined ||
+                localStorage.getItem("WebCraftToken") === undefined) {
+                this.$router.push("/");
+            }
+            if (this.$route.params.type === 'new') {
+                this.filename = this.$route.params.info.filename;
+                this.worldWidth = this.$route.params.info.worldSize;
+                this.createNewWorld();
             } else {
                 // this.$axios({
                 //     method: 'get',
@@ -237,6 +256,30 @@
             closeMenu() {
                 this.recoverViewChange();
                 this.menuShow = false;
+            },
+            createNewWorld() {
+                this.fullscreenLoading = true;
+                this.generateHeight(this.worldWidth);
+                this.$axios({
+                    method: 'post',
+                    url: '/api/create',
+                    headers: {
+                        'Authorization': 'bearer ' + localStorage.getItem("WebCraftToken")
+                    },
+                    data: {
+                        username: localStorage.getItem("WebCraftUser"),
+                        filename: this.filename,
+                        fileContent: JSON.stringify(this.data)
+                    }
+                }).then((response) => {
+                    if (response.status === 200) {
+                        this.fullscreenLoading = false;
+                        this.loadSuccess = true;
+                        setTimeout(() => {
+                            this.loadSuccess = false
+                        }, 2000);
+                    }
+                })
             }
         }
     }

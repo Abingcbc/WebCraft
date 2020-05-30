@@ -38,7 +38,7 @@ public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
         http.authorizeRequests()
                 .antMatchers("/file/{username}", "/fileList/{username}", "/delete/{username}")
                 .access("@userService.checkTokenPermission(authentication, #username)")
-                .anyRequest().permitAll();
+                .antMatchers("/register").permitAll();
     }
 
     @Bean
