@@ -69,7 +69,7 @@
                     <el-input v-model="createForm.filename" autocomplete="off" class="MineCraftInput"/>
                 </el-form-item>
                 <el-form-item label="世界大小">
-                    <el-input-number v-model="createForm.worldSize" :min="2" :max="100" :step="2"/>
+                    <el-input-number v-model="createForm.worldSize" :min="2" :max="100"/>
                 </el-form-item>
             </el-form>
             <div slot="footer" class="dialog-footer">

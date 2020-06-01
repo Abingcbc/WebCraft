@@ -16,7 +16,7 @@ import {
 
 var FirstPersonControls = function (scene, camera, domElement,
 									data, objects, worldWidth,
-									escHandler) {
+									escHandler, boxHelper) {
 
     if (domElement === undefined) {
         domElement = document;
@@ -29,6 +29,7 @@ var FirstPersonControls = function (scene, camera, domElement,
     this.objects = objects;
     this.worldWidth = worldWidth;
     this.escHandler = escHandler;
+    this.boxHelper = boxHelper;
     this.directRay = new Raycaster();
 
     this.movementSpeed = 1.0;
@@ -51,8 +52,6 @@ var FirstPersonControls = function (scene, camera, domElement,
 
     this.viewHalfX = 0;
     this.viewHalfY = 0;
-
-    // private variables
 
     var lat = 0;
     var lon = 0;
@@ -240,78 +239,82 @@ var FirstPersonControls = function (scene, camera, domElement,
             var actualMoveSpeed = delta * this.movementSpeed;
             if (this.moveForward) {
                 let keepY = this.camera.position.y;
-                this.camera.translateZ(-(actualMoveSpeed));
+                this.camera.translateZ(-(actualMoveSpeed+20));
                 let pos = this.camera.position;
                 if (pos.x < 0 || pos.z < 0
                     || Math.round(pos.x / 100) >= this.worldWidth
                     || Math.round(pos.z / 100) >= this.worldWidth) {
-                    this.camera.translateZ((actualMoveSpeed));
+                    this.camera.translateZ((actualMoveSpeed + 20));
                     this.camera.position.y = keepY;
                     return;
                 }
                 let heightArray = this.data[Math.round(pos.x / 100)][Math.round(pos.z / 100)];
                 if (isConflict(pos.y - 100, heightArray)) {
-                    this.camera.translateZ((actualMoveSpeed));
+                    this.camera.translateZ((actualMoveSpeed+20));
                     this.camera.position.y = keepY;
                 } else {
-                    this.camera.position.y = getHeight(heightArray) + 150;
+                    this.camera.position.y = getHeight(pos.y, heightArray) * 100 + 150;
+                    this.camera.translateZ((20));
                 }
             }
             if (this.moveBackward) {
                 let keepY = this.camera.position.y;
-                this.camera.translateZ(actualMoveSpeed);
+                this.camera.translateZ(actualMoveSpeed + 20);
                 let pos = this.camera.position;
                 if (pos.x < 0 || pos.z < 0
                     || Math.round(pos.x / 100) >= this.worldWidth
                     || Math.round(pos.z / 100) >= this.worldWidth) {
-                    this.camera.translateZ(-actualMoveSpeed);
+                    this.camera.translateZ(-actualMoveSpeed - 20);
                     this.camera.position.y = keepY;
                     return;
                 }
                 let heightArray = this.data[Math.round(pos.x / 100)][Math.round(pos.z / 100)];
                 if (isConflict(pos.y - 100, heightArray)) {
-                    this.camera.translateZ(-actualMoveSpeed);
+                    this.camera.translateZ(-actualMoveSpeed-20);
                     this.camera.position.y = keepY;
                 } else {
-                    this.camera.position.y = getHeight(heightArray) + 150;
+                    this.camera.position.y = getHeight(pos.y, heightArray) * 100 + 150;
+                    this.camera.translateZ(-20);
                 }
             }
             if (this.moveLeft) {
                 let keepY = this.camera.position.y;
-                this.camera.translateX(-actualMoveSpeed);
+                this.camera.translateX(-actualMoveSpeed-20);
                 let pos = this.camera.position;
                 if (pos.x < 0 || pos.z < 0
                     || Math.round(pos.x / 100) >= this.worldWidth
                     || Math.round(pos.z / 100) >= this.worldWidth) {
-                    this.camera.translateX(actualMoveSpeed);
+                    this.camera.translateX(actualMoveSpeed+20);
                     this.camera.position.y = keepY;
                     return;
                 }
                 let heightArray = this.data[Math.round(pos.x / 100)][Math.round(pos.z / 100)];
                 if (isConflict(pos.y - 100, heightArray)) {
-                    this.camera.translateX(actualMoveSpeed);
+                    this.camera.translateX(actualMoveSpeed+20);
                     this.camera.position.y = keepY;
                 } else {
-                    this.camera.position.y = getHeight(heightArray) + 150;
+                    this.camera.position.y = getHeight(pos.y, heightArray) * 100 + 150;
+                    this.camera.translateX(20);
                 }
             }
             if (this.moveRight) {
                 let keepY = this.camera.position.y;
-                this.camera.translateX(actualMoveSpeed);
+                this.camera.translateX(actualMoveSpeed+20);
                 let pos = this.camera.position;
                 if (pos.x < 0 || pos.z < 0
                     || Math.round(pos.x / 100) >= this.worldWidth
                     || Math.round(pos.z / 100) >= this.worldWidth) {
-                    this.camera.translateX(-actualMoveSpeed);
+                    this.camera.translateX(-actualMoveSpeed-20);
                     this.camera.position.y = keepY;
                     return;
                 }
                 let heightArray = this.data[Math.round(pos.x / 100)][Math.round(pos.z / 100)];
                 if (isConflict(pos.y - 100, heightArray)) {
-                    this.camera.translateX(-actualMoveSpeed);
+                    this.camera.translateX(-actualMoveSpeed-20);
                     this.camera.position.y = keepY;
                 } else {
-                    this.camera.position.y = getHeight(heightArray) + 150;
+                    this.camera.position.y = getHeight(pos.y, heightArray) * 100 + 150;
+                    this.camera.translateX(-20);
                 }
             }
 
@@ -350,13 +353,18 @@ var FirstPersonControls = function (scene, camera, domElement,
                     if (selectedBoxes[0] && selectedBoxes[0].distance <= 1000) {
                         // 左键点击，创建新的方块
                         if (type === 0) {
-                            let newBox = addNewBox(selectedBoxes[0]);
+                            let newBox = addNewBox(selectedBoxes[0],
+                                this.boxHelper.createDataHandler);
                             this.scene.add(newBox);
                             this.objects.push(newBox);
                         } else {
                             let index = this.objects.findIndex(
                                 e => e.id === selectedBoxes[0].object.id);
                             this.objects.splice(index, 1);
+                            this.boxHelper.removeDataHandler(
+                                Math.floor(selectedBoxes[0].object.position.x/100),
+                                Math.floor(selectedBoxes[0].object.position.y/100),
+                                Math.floor(selectedBoxes[0].object.position.z/100));
                             this.scene.remove(this.scene.getObjectById(selectedBoxes[0].object.id));
                         }
                     }
@@ -376,13 +384,10 @@ var FirstPersonControls = function (scene, camera, domElement,
 
 
     function contextmenu(event) {
-
         event.preventDefault();
-
     }
 
     this.dispose = function () {
-
         this.domElement.removeEventListener('contextmenu', contextmenu, false);
         this.domElement.removeEventListener('mousedown', _onMouseDown, false);
         this.domElement.removeEventListener('mousemove', _onMouseMove, false);
@@ -390,7 +395,6 @@ var FirstPersonControls = function (scene, camera, domElement,
 
         window.removeEventListener('keydown', _onKeyDown, false);
         window.removeEventListener('keyup', _onKeyUp, false);
-
     };
 
     var _onMouseMove = bind(this, this.onMouseMove);

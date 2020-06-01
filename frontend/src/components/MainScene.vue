@@ -42,6 +42,7 @@
     import {FirstPersonControls} from "../controls/FirstPersonControls";
     import {createBox} from "@/utils/BoxUtil";
     import "../assets/css/main.css";
+    import {getHeight} from "@/utils/SpaceUtil";
 
     export default {
         name: "MainScene",
@@ -64,25 +65,30 @@
                 currentBlock: "",
                 menuShow: false,
                 fullscreenLoading: false,
-                loadSuccess: false
+                loadSuccess: false,
+                boxHelper: {
+                    createDataHandler: this.createDataHandler,
+                    removeDataHandler: this.removeDataHandler
+                }
             }
         },
         mounted() {
             // 非法进入
-            if (this.$route.params.type === undefined ||
-                localStorage.getItem("WebCraftToken") === undefined) {
-                this.$router.push("/");
-            }
-            if (this.$route.params.type === 'new') {
-                this.filename = this.$route.params.info.filename;
-                this.worldWidth = this.$route.params.info.worldSize;
-                this.createNewWorld();
-            } else {
-                // this.$axios({
-                //     method: 'get',
-                //     url: ''
-                // })
-            }
+            // if (this.$route.params.type === undefined ||
+            //     localStorage.getItem("WebCraftToken") === undefined) {
+            //     this.$router.push("/");
+            // }
+            // if (this.$route.params.type === 'new') {
+            //     this.filename = this.$route.params.info.filename;
+            //     this.worldWidth = this.$route.params.info.worldSize;
+            //     this.createNewWorld();
+            // } else {
+            //     // this.$axios({
+            //     //     method: 'get',
+            //     //     url: ''
+            //     // })
+            // }
+            this.createNewWorld();
             this.init();
             this.animate();
         },
@@ -96,28 +102,17 @@
                 // 均使用默认参数，防止之后更改，这里先写明
                 this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 20000);
                 // 设置相机位置到地图的中心
-                this.camera.position.x = 100 * this.worldWidth / 2;
-                this.camera.position.z = 100 * this.worldWidth / 2;
-                this.camera.position.y = this.getHeight(this.worldWidth / 2, this.worldWidth / 2) * 100 + 150;
+                this.camera.position.x = 100 * Math.floor(this.worldWidth / 2);
+                this.camera.position.z = 100 * Math.floor(this.worldWidth / 2);
+                this.camera.position.y = getHeight(100000,
+                    this.data[Math.floor(this.worldWidth / 2)][Math.floor(this.worldWidth / 2)],
+                ) * 100 + 150;
 
                 this.scene = new THREE.Scene();
                 this.scene.background = new THREE.Color(0xffffff);
                 this.scene.fog = new THREE.FogExp2(0xffffff, 0.00015);
 
-                var matrix = new THREE.Matrix4();
-                for (var z = 0; z < this.worldWidth; z++) {
-                    for (var x = 0; x < this.worldWidth; x++) {
-                        var h = this.getHeight(x, z);
-                        matrix.makeTranslation(
-                            x * 100,
-                            h * 100,
-                            z * 100
-                        );
-                        const box = createBox(matrix);
-                        this.scene.add(box);
-                        this.objects.push(box);
-                    }
-                }
+                this.loadWorld();
 
                 // 添加环境光
                 var ambientLight = new THREE.AmbientLight(0xcccccc);
@@ -134,7 +129,7 @@
 
                 this.controls = new FirstPersonControls(this.scene, this.camera,
                     this.renderer.domElement, this.data, this.objects, this.worldWidth,
-                    this.escHandler
+                    this.escHandler, this.boxHelper
                 );
 
                 this.controls.movementSpeed = 500;
@@ -150,12 +145,6 @@
                 container.appendChild(this.status.dom);
 
             },
-            getHeight(x, z) {
-                if (x < 0 || z < 0 || x >= 200 || z >= 200) {
-                    return 0;
-                }
-                return this.data[x][z][0].end;
-            },
             generateHeight(width) {
                 // 高度恒定为30
                 for (let x = 0; x < width; x++) {
@@ -164,7 +153,8 @@
                         temp.push([
                             {
                                 start: 0,
-                                end: 30
+                                end: 30,
+                                type: 0
                             }
                         ])
                     }
@@ -240,6 +230,26 @@
                 this.renderer.render(this.scene, this.camera);
                 this.status.update();
             },
+            loadWorld() {
+                for (var z = 0; z < this.worldWidth; z++) {
+                    for (var x = 0; x < this.worldWidth; x++) {
+                        let heightArray = this.data[x][z];
+                        for (let i = 0; i < heightArray.length; i++) {
+                            for (let j = heightArray[i].start; j <= heightArray[i].end; j++) {
+                                if (this.shouldDisplay(x, j, z)) {
+                                    let box = createBox(
+                                        x * 100,
+                                        j * 100,
+                                        z * 100);
+                                    this.scene.add(box);
+                                    this.objects.push(box);
+                                }
+                            }
+
+                        }
+                    }
+                }
+            },
             selectBlock(blockUrl) {
                 this.currentBlock = blockUrl;
             },
@@ -280,6 +290,143 @@
                         }, 2000);
                     }
                 })
+            },
+            createDataHandler(x, y, z) {
+                let heightArray = this.data[x][z];
+                for (let i = 0; i < heightArray.length; i++) {
+                    if (i+1 === heightArray.length) {
+                        heightArray[i].end += 1;
+                    } else {
+                        if (heightArray[i] < y || y < heightArray[i+1] ) {
+                            // 在已有的上面放置方块
+                            if (heightArray[i] + 1 === y) {
+                                heightArray[i].end += 1;
+                            } else if (heightArray[i+1].start-1 === y){
+                                heightArray[i+1].start -= 1;
+                            } else {
+                                // 通过四周进行悬空的方块
+                                heightArray.splice(i+1, 0, {
+                                    start: y,
+                                    end: y,
+                                    type: 0
+                                })
+                            }
+                            break;
+                        }
+                    }
+                }
+            },
+            removeDataHandler(x, y, z) {
+                let heightArray = this.data[x][z];
+                for (let i = 0; i < heightArray.length; i++) {
+                    // 方块一定属于某个方块段之内
+                    if (heightArray[i].start <= y && y <= heightArray[i].end) {
+                        // 方块段可以移除
+                        if (heightArray[i].start === heightArray[i].end) {
+                            heightArray.splice(i, 1);
+                        } else if (heightArray[i].start === y) {
+                            heightArray[i].start += 1;
+                        } else if (heightArray[i].end === y) {
+                            heightArray[i].end -= 1;
+                        } else {
+                            let tempEnd = heightArray[i].end;
+                            let tempType = heightArray[i].type;
+                            heightArray.splice(i+1, 0, {
+                                start: y+1,
+                                end: tempEnd,
+                                type: tempType
+                            });
+                            heightArray[i].end = y-1;
+                        }
+                    }
+                }
+                this.data[x][z] = heightArray;
+                if (x-1 >= 0 && this.isBlockExist(x-1, y, z) &&
+                    !this.isBlockDisplayed(x-1, y, z)) {
+                    let newBox = createBox(
+                        (x-1) * 100,
+                        y * 100,
+                        z * 100);
+                    this.scene.add(newBox);
+                    this.objects.push(newBox);
+                }
+                if (z-1 >= 0 && this.isBlockExist(x, y, z-1) &&
+                    !this.isBlockDisplayed(x, y, z-1)) {
+                    let newBox = createBox(
+                        x * 100,
+                        y * 100,
+                        (z-1) * 100);
+                    this.scene.add(newBox);
+                    this.objects.push(newBox);
+                }
+                if (x+1 < this.worldWidth && this.isBlockExist(x+1, y, z) &&
+                    !this.isBlockDisplayed(x+1, y, z)) {
+                    let newBox = createBox(
+                        (x+1) * 100,
+                        y * 100,
+                        z * 100);
+                    this.scene.add(newBox);
+                    this.objects.push(newBox);
+                }
+                if (z+1 < this.worldWidth && this.isBlockExist(x, y, z+1) &&
+                    !this.isBlockDisplayed(x, y, z+1)) {
+                    let newBox = createBox(
+                        x * 100,
+                        y * 100,
+                        (z+1) * 100);
+                    this.scene.add(newBox);
+                    this.objects.push(newBox);
+                }
+                if (this.isBlockExist(x, y+1, z) &&
+                    !this.isBlockDisplayed(x, y+1, z)) {
+                    let newBox = createBox(
+                        x * 100,
+                        (y+1) * 100,
+                        z * 100);
+                    this.scene.add(newBox);
+                    this.objects.push(newBox);
+                }
+                if (this.isBlockExist(x, y-1, z) &&
+                    !this.isBlockDisplayed(x, y-1, z)) {
+                    let newBox = createBox(
+                        x * 100,
+                        (y-1) * 100,
+                        z * 100);
+                    this.scene.add(newBox);
+                    this.objects.push(newBox);
+                }
+            },
+            shouldDisplay(x, y, z) {
+                return !this.isBlockExist(x-1, y, z) ||
+                        !this.isBlockExist(x+1, y, z) ||
+                        !this.isBlockExist(x, y+1, z) ||
+                        !this.isBlockExist(x, y-1, z) ||
+                        !this.isBlockExist(x, y, z+1) ||
+                        !this.isBlockExist(x, y, z-1);
+            },
+            isBlockExist(x, y, z) {
+                if (x < 0 || x >= this.worldWidth || z < 0 || z >= this.worldWidth) {
+                    return true;
+                }
+                let result = false;
+                let heightArray = this.data[x][z];
+                for (let i = 0; i < heightArray.length; i++) {
+                    if (heightArray[i].start <= y && y <= heightArray[i].end) {
+                        result = true;
+                    }
+                }
+                return result;
+            },
+            isBlockDisplayed(x, y, z) {
+                for (let object of this.objects) {
+                    if (Math.floor(object.position.x/100) === x &&
+                            Math.floor(object.position.y/100) === y &&
+                            Math.floor(object.position.z/100) === z
+                    ) {
+                        return true;
+                    }
+                }
+                return false;
             }
         }
     }

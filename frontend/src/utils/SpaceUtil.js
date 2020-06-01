@@ -14,8 +14,15 @@ const isConflict = function (currentHeight, heightArray) {
     return false;
 };
 
-const getHeight = function (heightArray) {
-    return heightArray[heightArray.length-1].end*100;
+const getHeight = function (y, heightArray) {
+    if (heightArray[heightArray.length-1].end * 100 < y) {
+        return heightArray[heightArray.length-1].end;
+    }
+    for (let i = 0; i < heightArray.length-1; i++) {
+        if (heightArray[i].end * 100 < y && y < heightArray[i+1].start * 100) {
+            return heightArray[i].end;
+        }
+    }
 };
 
 export { isConflict, getHeight};
