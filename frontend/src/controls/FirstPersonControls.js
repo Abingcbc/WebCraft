@@ -15,8 +15,8 @@ import {
 } from "@/utils/BoxUtil";
 
 var FirstPersonControls = function (scene, camera, domElement,
-									data, objects, worldWidth,
-									escHandler, boxHelper) {
+                                    data, objects, worldWidth,
+                                    escHandler, boxHelper) {
 
     if (domElement === undefined) {
         domElement = document;
@@ -31,6 +31,7 @@ var FirstPersonControls = function (scene, camera, domElement,
     this.escHandler = escHandler;
     this.boxHelper = boxHelper;
     this.directRay = new Raycaster();
+    this.boxType = 0;
 
     this.movementSpeed = 1.0;
     this.lookSpeed = 0.005;
@@ -49,6 +50,12 @@ var FirstPersonControls = function (scene, camera, domElement,
     this.createNewBox = false;
     this.removeBox = false;
     this.viewLock = false;
+    this.jump = 0;
+    this.minJumpHeight = 0;
+    this.maxJumpHeight = 0;
+    this.createMode = false;
+    this.moveUp = false;
+    this.moveDown = false;
 
     this.viewHalfX = 0;
     this.viewHalfY = 0;
@@ -154,30 +161,59 @@ var FirstPersonControls = function (scene, camera, domElement,
 
         switch (event.keyCode) {
 
-            case 38: /*up*/
-            case 87: /*W*/
+            case 38: // up
+            case 87: // W
                 this.moveForward = true;
                 break;
 
-            case 37: /*left*/
-            case 65: /*A*/
+            case 37: // left
+            case 65: // A
                 this.moveLeft = true;
                 break;
 
-            case 40: /*down*/
-            case 83: /*S*/
+            case 40: // down
+            case 83: // S
                 this.moveBackward = true;
                 break;
 
-            case 39: /*right*/
-            case 68: /*D*/
+            case 39: // right
+            case 68: // D
                 this.moveRight = true;
                 break;
 
-			case 27: /*esc*/
-				this.escHandler();
-				break;
+            case 27: // esc
+                this.escHandler();
+                break;
 
+            case 32: // space
+                this.jump = 1;
+                this.maxJumpHeight = this.camera.position.y + 100;
+                this.minJumpHeight = this.camera.position.y;
+                break;
+
+            case 81: // Q
+                this.createMode = !this.createMode;
+                // 停止跳跃
+                this.jump = 0;
+                this.boxHelper.createModeHandler(this.createMode);
+                if (!this.createMode) {
+                    this.jump = 2;
+                    this.minJumpHeight = getHeight(this.camera.position.y,
+                        this.data[Math.round(this.camera.position.x / 100)][Math.round(this.camera.position.z / 100)]) * 100 + 150;
+                }
+                break;
+
+            case 82: // R
+                if (this.createMode) {
+                    this.moveUp = true;
+                }
+                break;
+
+            case 70: // F
+                if (this.createMode) {
+                    this.moveDown = true;
+                }
+                break;
         }
 
     };
@@ -186,26 +222,33 @@ var FirstPersonControls = function (scene, camera, domElement,
 
         switch (event.keyCode) {
 
-            case 38: /*up*/
-            case 87: /*W*/
+            case 38: // up
+            case 87: // W
                 this.moveForward = false;
                 break;
 
-            case 37: /*left*/
-            case 65: /*A*/
+            case 37: // left
+            case 65: // A
                 this.moveLeft = false;
                 break;
 
-            case 40: /*down*/
-            case 83: /*S*/
+            case 40: // down
+            case 83: // S
                 this.moveBackward = false;
                 break;
 
-            case 39: /*right*/
-            case 68: /*D*/
+            case 39: // right
+            case 68: // D
                 this.moveRight = false;
                 break;
 
+            case 82: // R
+                this.moveUp = false;
+                break;
+
+            case 70: // F
+                this.moveDown = false;
+                break;
         }
 
     };
@@ -236,10 +279,32 @@ var FirstPersonControls = function (scene, camera, domElement,
 
         return function update(delta) {
             // 移动控制
-            var actualMoveSpeed = delta * this.movementSpeed;
+            let actualMoveSpeed = delta * this.movementSpeed;
+            if (!this.createMode && this.jump !== 0) {
+                let jumpSpeed = actualMoveSpeed;
+                // 上升阶段
+                if (this.jump === 1) {
+                    if (this.camera.position.y + jumpSpeed >= this.maxJumpHeight) {
+                        this.camera.position.y = this.maxJumpHeight;
+                        this.jump = 2;
+                        this.maxJumpHeight = 0;
+                    } else {
+                        this.camera.position.y += jumpSpeed;
+                    }
+                } else {
+                    if (this.camera.position.y - jumpSpeed <= this.minJumpHeight) {
+                        this.camera.position.y = this.minJumpHeight;
+                        this.jump = 0;
+                        this.minJumpHeight = 0;
+                    } else {
+                        this.camera.position.y -= jumpSpeed;
+                    }
+                }
+            }
+
             if (this.moveForward) {
                 let keepY = this.camera.position.y;
-                this.camera.translateZ(-(actualMoveSpeed+20));
+                this.camera.translateZ(-(actualMoveSpeed + 20));
                 let pos = this.camera.position;
                 if (pos.x < 0 || pos.z < 0
                     || Math.round(pos.x / 100) >= this.worldWidth
@@ -250,11 +315,25 @@ var FirstPersonControls = function (scene, camera, domElement,
                 }
                 let heightArray = this.data[Math.round(pos.x / 100)][Math.round(pos.z / 100)];
                 if (isConflict(pos.y - 100, heightArray)) {
-                    this.camera.translateZ((actualMoveSpeed+20));
+                    this.camera.translateZ((actualMoveSpeed + 20));
                     this.camera.position.y = keepY;
                 } else {
-                    this.camera.position.y = getHeight(pos.y, heightArray) * 100 + 150;
-                    this.camera.translateZ((20));
+                    this.camera.translateZ(20);
+                    if (this.createMode) {
+                        this.camera.position.y = keepY;
+                    } else {
+                        if (this.jump !== 0) {
+                            this.camera.y = keepY;
+                            this.minJumpHeight = getHeight(pos.y, heightArray) * 100 + 150;
+                        } else {
+                            if (getHeight(pos.y, heightArray) * 100 + 150 < keepY) {
+                                this.jump = 2;
+                                this.minJumpHeight = getHeight(pos.y, heightArray) * 100 + 150;
+                            } else {
+                                this.camera.position.y = keepY;
+                            }
+                        }
+                    }
                 }
             }
             if (this.moveBackward) {
@@ -270,51 +349,107 @@ var FirstPersonControls = function (scene, camera, domElement,
                 }
                 let heightArray = this.data[Math.round(pos.x / 100)][Math.round(pos.z / 100)];
                 if (isConflict(pos.y - 100, heightArray)) {
-                    this.camera.translateZ(-actualMoveSpeed-20);
+                    this.camera.translateZ(-actualMoveSpeed - 20);
                     this.camera.position.y = keepY;
                 } else {
-                    this.camera.position.y = getHeight(pos.y, heightArray) * 100 + 150;
                     this.camera.translateZ(-20);
+                    if (this.createMode) {
+                        this.camera.position.y = keepY;
+                    } else {
+                        if (this.jump !== 0) {
+                            this.camera.y = keepY;
+                            this.minJumpHeight = getHeight(pos.y, heightArray) * 100 + 150;
+                        } else {
+                            if (getHeight(pos.y, heightArray) * 100 + 150 < keepY) {
+                                this.jump = 2;
+                                this.minJumpHeight = getHeight(pos.y, heightArray) * 100 + 150;
+                            } else {
+                                this.camera.position.y = keepY;
+                            }
+                        }
+                    }
                 }
             }
             if (this.moveLeft) {
                 let keepY = this.camera.position.y;
-                this.camera.translateX(-actualMoveSpeed-20);
+                this.camera.translateX(-actualMoveSpeed - 20);
                 let pos = this.camera.position;
                 if (pos.x < 0 || pos.z < 0
                     || Math.round(pos.x / 100) >= this.worldWidth
                     || Math.round(pos.z / 100) >= this.worldWidth) {
-                    this.camera.translateX(actualMoveSpeed+20);
+                    this.camera.translateX(actualMoveSpeed + 20);
                     this.camera.position.y = keepY;
                     return;
                 }
                 let heightArray = this.data[Math.round(pos.x / 100)][Math.round(pos.z / 100)];
                 if (isConflict(pos.y - 100, heightArray)) {
-                    this.camera.translateX(actualMoveSpeed+20);
+                    this.camera.translateX(actualMoveSpeed + 20);
                     this.camera.position.y = keepY;
                 } else {
-                    this.camera.position.y = getHeight(pos.y, heightArray) * 100 + 150;
                     this.camera.translateX(20);
+                    if (this.createMode) {
+                        this.camera.position.y = keepY;
+                    } else {
+                        if (this.jump !== 0) {
+                            this.camera.y = keepY;
+                            this.minJumpHeight = getHeight(pos.y, heightArray) * 100 + 150;
+                        } else {
+                            if (getHeight(pos.y, heightArray) * 100 + 150 < keepY) {
+                                this.jump = 2;
+                                this.minJumpHeight = getHeight(pos.y, heightArray) * 100 + 150;
+                            } else {
+                                this.camera.position.y = keepY;
+                            }
+                        }
+                    }
                 }
             }
             if (this.moveRight) {
                 let keepY = this.camera.position.y;
-                this.camera.translateX(actualMoveSpeed+20);
+                this.camera.translateX(actualMoveSpeed + 20);
                 let pos = this.camera.position;
                 if (pos.x < 0 || pos.z < 0
                     || Math.round(pos.x / 100) >= this.worldWidth
                     || Math.round(pos.z / 100) >= this.worldWidth) {
-                    this.camera.translateX(-actualMoveSpeed-20);
+                    this.camera.translateX(-actualMoveSpeed - 20);
                     this.camera.position.y = keepY;
                     return;
                 }
                 let heightArray = this.data[Math.round(pos.x / 100)][Math.round(pos.z / 100)];
                 if (isConflict(pos.y - 100, heightArray)) {
-                    this.camera.translateX(-actualMoveSpeed-20);
+                    this.camera.translateX(-actualMoveSpeed - 20);
                     this.camera.position.y = keepY;
                 } else {
-                    this.camera.position.y = getHeight(pos.y, heightArray) * 100 + 150;
                     this.camera.translateX(-20);
+                    if (this.createMode) {
+                        this.camera.position.y = keepY;
+                    } else {
+                        if (this.jump !== 0) {
+                            this.camera.y = keepY;
+                            this.minJumpHeight = getHeight(pos.y, heightArray) * 100 + 150;
+                        } else {
+                            if (getHeight(pos.y, heightArray) * 100 + 150 < keepY) {
+                                this.jump = 2;
+                                this.minJumpHeight = getHeight(pos.y, heightArray) * 100 + 150;
+                            } else {
+                                this.camera.position.y = keepY;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 创造模式
+            if (this.moveUp) {
+                this.camera.position.y += delta * this.movementSpeed;
+            }
+            if (this.moveDown) {
+                let minHeight = getHeight(this.camera.position.y,
+                    this.data[Math.round(this.camera.position.x / 100)][Math.round(this.camera.position.z / 100)]) * 100 + 150;
+                if (this.camera.position.y - delta * this.movementSpeed <= minHeight) {
+                    this.camera.position.y = minHeight;
+                } else {
+                    this.camera.position.y -= delta * this.movementSpeed;
                 }
             }
 
@@ -350,28 +485,32 @@ var FirstPersonControls = function (scene, camera, domElement,
                 this.directRay.setFromCamera(new Vector2(0, 0), this.camera);
                 let selectedBoxes = this.directRay.intersectObjects(this.objects);
                 if (selectedBoxes.length > 0) {
-                    if (selectedBoxes[0] && selectedBoxes[0].distance <= 1000) {
+                    if (selectedBoxes[0] && selectedBoxes[0].distance <= 300) {
                         // 左键点击，创建新的方块
                         if (type === 0) {
-                            let newBox = addNewBox(selectedBoxes[0],
-                                this.boxHelper.createDataHandler);
-                            this.scene.add(newBox);
-                            this.objects.push(newBox);
+                            if (this.boxType !== 3 ||
+                                this.boxHelper.isBlockExist(Math.floor(selectedBoxes[0].object.position.x / 100),
+                                    Math.floor(selectedBoxes[0].object.position.y / 100) + 1,
+                                    Math.floor(selectedBoxes[0].object.position.z / 100)) === -1) {
+                                let newBox = addNewBox(selectedBoxes[0],
+                                    this.boxHelper.createDataHandler, this.boxType);
+                                this.scene.add(newBox);
+                                this.objects.push(newBox);
+                            }
                         } else {
                             let index = this.objects.findIndex(
                                 e => e.id === selectedBoxes[0].object.id);
                             this.objects.splice(index, 1);
                             this.boxHelper.removeDataHandler(
-                                Math.floor(selectedBoxes[0].object.position.x/100),
-                                Math.floor(selectedBoxes[0].object.position.y/100),
-                                Math.floor(selectedBoxes[0].object.position.z/100));
+                                Math.floor(selectedBoxes[0].object.position.x / 100),
+                                Math.floor(selectedBoxes[0].object.position.y / 100),
+                                Math.floor(selectedBoxes[0].object.position.z / 100));
                             this.scene.remove(this.scene.getObjectById(selectedBoxes[0].object.id));
                         }
                     }
                 }
             }
         };
-
     }();
 
     this.lockView = () => {
@@ -407,6 +546,7 @@ var FirstPersonControls = function (scene, camera, domElement,
     this.domElement.addEventListener('mousemove', _onMouseMove, false);
     this.domElement.addEventListener('mousedown', _onMouseDown, false);
     this.domElement.addEventListener('mouseup', _onMouseUp, false);
+    this.domElement.addEventListener('mousewheel', this.boxHelper.onMouseWheelHandler, false);
 
     window.addEventListener('keydown', _onKeyDown, false);
     window.addEventListener('keyup', _onKeyUp, false);

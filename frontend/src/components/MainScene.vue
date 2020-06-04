@@ -1,19 +1,14 @@
 <template>
     <div id="container">
         <el-alert
-                title="成功加载世界"
+                :title="alertTitle"
                 type="success"
                 center
                 show-icon
-                v-if="loadSuccess"
+                v-if="showAlert"
         >
         </el-alert>
-        <div class="blocker">
-            <img class="blockerImg" v-for="blockUrl in blockerList"
-                 :key="blockUrl" :src="blockUrl" alt=""
-                 @click="selectBlock(blockUrl)"
-            />
-        </div>
+        <img class="blockerImg" :src="blockUrl" alt=""/>
         <img src="../assets/img/cross.png" class="cross" alt=""/>
         <el-dialog
                 class="menu"
@@ -58,18 +53,24 @@
                 controls: {},
                 render: {},
                 clock: {},
+                blockUrl: "/textures/dirt.png",
                 blockerList: [
                     "/textures/dirt.png",
-                    "/textures/stonebrick_carved.png"
+                    "/textures/grass_dirt.png",
+                    "/textures/brick.png",
+                    "/textures/tallgrass.png"
                 ],
-                currentBlock: "",
                 menuShow: false,
                 fullscreenLoading: false,
-                loadSuccess: false,
                 boxHelper: {
                     createDataHandler: this.createDataHandler,
-                    removeDataHandler: this.removeDataHandler
-                }
+                    removeDataHandler: this.removeDataHandler,
+                    createModeHandler: this.createModeHandler,
+                    isBlockExist: this.isBlockExist,
+                    onMouseWheelHandler: this.onMouseWheelHandler
+                },
+                alertTitle: "",
+                showAlert: false
             }
         },
         mounted() {
@@ -118,7 +119,7 @@
                 var ambientLight = new THREE.AmbientLight(0xcccccc);
                 this.scene.add(ambientLight);
                 // 添加直射光线，模拟日照
-                var directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+                var directionalLight = new THREE.DirectionalLight(0xffffff, 1);
                 directionalLight.position.set(1, 1, 0.5).normalize();
                 this.scene.add(directionalLight);
 
@@ -160,69 +161,6 @@
                     }
                     this.data.push(temp);
                 }
-                // 随机生成十座山
-                // for (let x = 0; x < 1; x++) {
-                //     let mX = Math.floor(Math.random() * width);
-                //     let mZ = Math.floor(Math.random() * width);
-                //     this.data[mX][mZ][0].end = 40;
-                //     for (let i = 0; i < 20; i++) {
-                //         if (i < 10) {
-                //             let j = 0;
-                //             for (;j < 2*i; j++) {
-                //                 if (mX - i >= 0 && mZ - i + j >= 0 && mZ - i + j < width) {
-                //                     this.data[mX - i][mZ - i + j][0].end = 40;
-                //                 }
-                //             }
-                //             j = 0;
-                //             for (; j < 2*i; j++) {
-                //                 if (mX - i + j>= 0 && mX - i + j < width && mZ + i < width) {
-                //                     this.data[mX - i + j][mZ + i][0].end = 40;
-                //                 }
-                //             }
-                //             j = 0;
-                //             for (; j < 2*i; j++) {
-                //                 if (mX + i < width && mZ + i - j < width && mZ + i - j >= 0) {
-                //                     this.data[mX + i][mZ + i - j][0].end = 40;
-                //                 }
-                //             }
-                //             j = 0;
-                //             for (; j < 2*i; j++) {
-                //                 if (mX + i - j < width && mX + i - j >= 0 && mZ - i >= 0) {
-                //                     this.data[mX + i - j][mZ - i][0].end = 40;
-                //                 }
-                //             }
-                //         } else {
-                //             let j = 0;
-                //             for (; j < 2*i; j++) {
-                //                 if (mX - i >= 0 && mZ - i + j >= 0 && mZ - i + j < width) {
-                //                     if (this.data[mX - i][mZ - i + j][0].end < 50-i)
-                //                         this.data[mX - i][mZ - i + j][0].end = 50-i;
-                //                 }
-                //             }
-                //             j = 0;
-                //             for (; j < 2*i; j++) {
-                //                 if (mX - i + j>= 0 && mX - i + j < width && mZ + i < width) {
-                //                     if (this.data[mX - i + j][mZ + i][0].end <50-i)
-                //                         this.data[mX - i + j][mZ + i][0].end = 50-i;
-                //                 }
-                //             }
-                //             j = 0;
-                //             for (; j < 2*i; j++) {
-                //                 if (mX + i < width && mZ + i - j < width && mZ + i - j >= 0) {
-                //                     if (this.data[mX + i][mZ + i - j][0].end < 50-i)
-                //                         this.data[mX + i][mZ + i - j][0].end = 50-i;
-                //                 }
-                //             }
-                //             j = 0;
-                //             for (; j < 2*i; j++) {
-                //                 if (mX + i - j < width && mX + i - j >= 0 && mZ - i >= 0) {
-                //                     if (this.data[mX + i - j][mZ - i][0].end < 50-i)
-                //                         this.data[mX + i - j][mZ - i][0].end = 50-i;
-                //                 }
-                //             }
-                //         }
-                //     }
-                // }
             },
             animate() {
                 requestAnimationFrame(this.animate);
@@ -240,7 +178,7 @@
                                     let box = createBox(
                                         x * 100,
                                         j * 100,
-                                        z * 100);
+                                        z * 100, heightArray[i].type);
                                     this.scene.add(box);
                                     this.objects.push(box);
                                 }
@@ -249,9 +187,6 @@
                         }
                     }
                 }
-            },
-            selectBlock(blockUrl) {
-                this.currentBlock = blockUrl;
             },
             pauseViewChange() {
                 this.controls.lockView();
@@ -284,31 +219,41 @@
                 }).then((response) => {
                     if (response.status === 200) {
                         this.fullscreenLoading = false;
-                        this.loadSuccess = true;
+                        this.showAlert = true;
+                        this.alertTitle = "加载世界成功！";
                         setTimeout(() => {
-                            this.loadSuccess = false
+                            this.showAlert = false
                         }, 2000);
                     }
                 })
             },
-            createDataHandler(x, y, z) {
+            createDataHandler(x, y, z, type) {
                 let heightArray = this.data[x][z];
-                for (let i = 0; i < heightArray.length; i++) {
-                    if (i+1 === heightArray.length) {
-                        heightArray[i].end += 1;
+                let arrayLength = heightArray.length;
+                for (let i = 0; i < arrayLength; i++) {
+                    if (i + 1 === arrayLength) {
+                        if (heightArray[i].type === type) {
+                            heightArray[i].end += 1;
+                        } else {
+                            heightArray.push({
+                                start: y,
+                                end: y,
+                                type: type
+                            });
+                        }
                     } else {
-                        if (heightArray[i] < y || y < heightArray[i+1] ) {
+                        if (heightArray[i] < y || y < heightArray[i + 1]) {
                             // 在已有的上面放置方块
-                            if (heightArray[i] + 1 === y) {
+                            if (heightArray[i] + 1 === y && heightArray[i].type === type) {
                                 heightArray[i].end += 1;
-                            } else if (heightArray[i+1].start-1 === y){
-                                heightArray[i+1].start -= 1;
+                            } else if (heightArray[i + 1].start - 1 === y && heightArray[i].type === type) {
+                                heightArray[i + 1].start -= 1;
                             } else {
-                                // 通过四周进行悬空的方块
-                                heightArray.splice(i+1, 0, {
+                                // 通过四周进行悬空的方块或者不同类型的方块
+                                this.data[x][z].splice(i + 1, 0, {
                                     start: y,
                                     end: y,
-                                    type: 0
+                                    type: type
                                 })
                             }
                             break;
@@ -331,102 +276,143 @@
                         } else {
                             let tempEnd = heightArray[i].end;
                             let tempType = heightArray[i].type;
-                            heightArray.splice(i+1, 0, {
-                                start: y+1,
+                            heightArray.splice(i + 1, 0, {
+                                start: y + 1,
                                 end: tempEnd,
                                 type: tempType
                             });
-                            heightArray[i].end = y-1;
+                            heightArray[i].end = y - 1;
                         }
                     }
                 }
                 this.data[x][z] = heightArray;
-                if (x-1 >= 0 && this.isBlockExist(x-1, y, z) &&
-                    !this.isBlockDisplayed(x-1, y, z)) {
-                    let newBox = createBox(
-                        (x-1) * 100,
-                        y * 100,
-                        z * 100);
-                    this.scene.add(newBox);
-                    this.objects.push(newBox);
+                if (x - 1 >= 0 &&
+                    !this.isBlockDisplayed(x - 1, y, z)) {
+                    let currentBlockType = this.isBlockExist(x - 1, y, z);
+                    if (currentBlockType !== -1) {
+                        let newBox = createBox(
+                            (x - 1) * 100,
+                            y * 100,
+                            z * 100, currentBlockType);
+                        this.scene.add(newBox);
+                        this.objects.push(newBox);
+                    }
                 }
-                if (z-1 >= 0 && this.isBlockExist(x, y, z-1) &&
-                    !this.isBlockDisplayed(x, y, z-1)) {
-                    let newBox = createBox(
-                        x * 100,
-                        y * 100,
-                        (z-1) * 100);
-                    this.scene.add(newBox);
-                    this.objects.push(newBox);
+                if (z - 1 >= 0 &&
+                    !this.isBlockDisplayed(x, y, z - 1)) {
+                    let currentBlockType = this.isBlockExist(x, y, z - 1);
+                    if (currentBlockType !== -1) {
+                        let newBox = createBox(
+                            x * 100,
+                            y * 100,
+                            (z - 1) * 100, currentBlockType);
+                        this.scene.add(newBox);
+                        this.objects.push(newBox);
+                    }
                 }
-                if (x+1 < this.worldWidth && this.isBlockExist(x+1, y, z) &&
-                    !this.isBlockDisplayed(x+1, y, z)) {
-                    let newBox = createBox(
-                        (x+1) * 100,
-                        y * 100,
-                        z * 100);
-                    this.scene.add(newBox);
-                    this.objects.push(newBox);
+                if (x + 1 < this.worldWidth &&
+                    !this.isBlockDisplayed(x + 1, y, z)) {
+                    let currentBlockType = this.isBlockExist(x + 1, y, z);
+                    if (currentBlockType !== -1) {
+                        let newBox = createBox(
+                            (x + 1) * 100,
+                            y * 100,
+                            z * 100, currentBlockType);
+                        this.scene.add(newBox);
+                        this.objects.push(newBox);
+                    }
                 }
-                if (z+1 < this.worldWidth && this.isBlockExist(x, y, z+1) &&
-                    !this.isBlockDisplayed(x, y, z+1)) {
-                    let newBox = createBox(
-                        x * 100,
-                        y * 100,
-                        (z+1) * 100);
-                    this.scene.add(newBox);
-                    this.objects.push(newBox);
+                if (z + 1 < this.worldWidth &&
+                    !this.isBlockDisplayed(x, y, z + 1)) {
+                    let currentBlockType = this.isBlockExist(x, y, z + 1);
+                    if (currentBlockType !== -1) {
+                        let newBox = createBox(
+                            x * 100,
+                            y * 100,
+                            (z + 1) * 100, currentBlockType);
+                        this.scene.add(newBox);
+                        this.objects.push(newBox);
+                    }
                 }
-                if (this.isBlockExist(x, y+1, z) &&
-                    !this.isBlockDisplayed(x, y+1, z)) {
-                    let newBox = createBox(
-                        x * 100,
-                        (y+1) * 100,
-                        z * 100);
-                    this.scene.add(newBox);
-                    this.objects.push(newBox);
+                if (!this.isBlockDisplayed(x, y + 1, z)) {
+                    let currentBlockType = this.isBlockExist(x, y + 1, z);
+                    if (currentBlockType !== -1) {
+                        let newBox = createBox(
+                            x * 100,
+                            (y + 1) * 100,
+                            z * 100, currentBlockType);
+                        this.scene.add(newBox);
+                        this.objects.push(newBox);
+                    }
                 }
-                if (this.isBlockExist(x, y-1, z) &&
-                    !this.isBlockDisplayed(x, y-1, z)) {
-                    let newBox = createBox(
-                        x * 100,
-                        (y-1) * 100,
-                        z * 100);
-                    this.scene.add(newBox);
-                    this.objects.push(newBox);
+                if (!this.isBlockDisplayed(x, y - 1, z)) {
+                    let currentBlockType = this.isBlockExist(x, y - 1, z);
+                    if (currentBlockType !== -1) {
+                        let newBox = createBox(
+                            x * 100,
+                            (y - 1) * 100,
+                            z * 100, currentBlockType);
+                        this.scene.add(newBox);
+                        this.objects.push(newBox);
+                    }
                 }
             },
             shouldDisplay(x, y, z) {
-                return !this.isBlockExist(x-1, y, z) ||
-                        !this.isBlockExist(x+1, y, z) ||
-                        !this.isBlockExist(x, y+1, z) ||
-                        !this.isBlockExist(x, y-1, z) ||
-                        !this.isBlockExist(x, y, z+1) ||
-                        !this.isBlockExist(x, y, z-1);
+                return this.isBlockExist(x - 1, y, z) === -1 ||
+                    this.isBlockExist(x + 1, y, z) === -1 ||
+                    this.isBlockExist(x, y + 1, z) === -1 ||
+                    this.isBlockExist(x, y - 1, z) === -1 ||
+                    this.isBlockExist(x, y, z + 1) === -1 ||
+                    this.isBlockExist(x, y, z - 1) === -1;
             },
             isBlockExist(x, y, z) {
                 if (x < 0 || x >= this.worldWidth || z < 0 || z >= this.worldWidth) {
                     return true;
                 }
-                let result = false;
+                let result = -1;
                 let heightArray = this.data[x][z];
                 for (let i = 0; i < heightArray.length; i++) {
                     if (heightArray[i].start <= y && y <= heightArray[i].end) {
-                        result = true;
+                        result = heightArray[i].type;
                     }
                 }
                 return result;
             },
             isBlockDisplayed(x, y, z) {
                 for (let object of this.objects) {
-                    if (Math.floor(object.position.x/100) === x &&
-                            Math.floor(object.position.y/100) === y &&
-                            Math.floor(object.position.z/100) === z
+                    if (Math.floor(object.position.x / 100) === x &&
+                        Math.floor(object.position.y / 100) === y &&
+                        Math.floor(object.position.z / 100) === z
                     ) {
                         return true;
                     }
                 }
                 return false;
+            },
+            createModeHandler(mode) {
+                if (mode) {
+                    this.alertTitle = "创造模式开启！";
+                    this.showAlert = true;
+                    setTimeout(() => {
+                        this.showAlert = false;
+                    }, 2000);
+                } else {
+                    this.alertTitle = "创造模式关闭！";
+                    this.showAlert = true;
+                    setTimeout(() => {
+                        this.showAlert = false;
+                    }, 2000);
+                }
+            },
+            onMouseWheelHandler(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (event.wheelDelta < 0) {
+                    this.controls.boxType = (this.controls.boxType + 1) % 4;
+                } else {
+                    this.controls.boxType = (this.controls.boxType + 3) % 4;
+                }
+                this.blockUrl = this.blockerList[this.controls.boxType];
             }
         }
     }
@@ -454,22 +440,15 @@
 
     }
 
-    .blocker {
+    .blockerImg {
         position: absolute;
 
         bottom: 0px;
-        left: 35%;
-        width: 300px;
-        height: 80px;
+        left: 5%;
 
         z-index: 4;
-
-        background-color: rgba(0, 0, 0, 0.5);
-    }
-
-    .blockerImg {
-        height: 60px;
-        width: 60px;
+        height: 100px;
+        width: 100px;
         margin: 10px;
         user-select: none;
     }
