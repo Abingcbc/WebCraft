@@ -4,6 +4,7 @@ import {
     Vector3,
     Raycaster, Vector2
 } from "three";
+import * as THREE from "three";
 
 import {
     isConflict,
@@ -36,7 +37,6 @@ var FirstPersonControls = function (scene, camera, domElement,
     this.movementSpeed = 1.0;
     this.lookSpeed = 0.005;
 
-    this.constrainVertical = false;
     this.verticalMin = 0;
     this.verticalMax = Math.PI;
 
@@ -186,9 +186,11 @@ var FirstPersonControls = function (scene, camera, domElement,
                 break;
 
             case 32: // space
-                this.jump = 1;
-                this.maxJumpHeight = this.camera.position.y + 100;
-                this.minJumpHeight = this.camera.position.y;
+                if (this.jump === 0) {
+                    this.jump = 1;
+                    this.maxJumpHeight = this.camera.position.y + 100;
+                    this.minJumpHeight = this.camera.position.y;
+                }
                 break;
 
             case 81: // Q
@@ -278,6 +280,7 @@ var FirstPersonControls = function (scene, camera, domElement,
         var targetPosition = new Vector3();
 
         return function update(delta) {
+            this.handleResize();
             // 移动控制
             let actualMoveSpeed = delta * this.movementSpeed;
             if (!this.createMode && this.jump !== 0) {
@@ -457,17 +460,13 @@ var FirstPersonControls = function (scene, camera, domElement,
             if (!this.viewLock) {
                 var actualLookSpeed = delta * this.lookSpeed;
                 var verticalLookRatio = 1;
-                if (this.constrainVertical) {
-                    verticalLookRatio = Math.PI / (this.verticalMax - this.verticalMin);
-                }
+                verticalLookRatio = Math.PI / (this.verticalMax - this.verticalMin);
                 lon -= this.mouseX * actualLookSpeed;
                 lat -= this.mouseY * actualLookSpeed * verticalLookRatio;
                 lat = Math.max(-85, Math.min(85, lat));
                 var phi = MathUtils.degToRad(90 - lat);
                 var theta = MathUtils.degToRad(lon);
-                if (this.constrainVertical) {
-                    phi = MathUtils.mapLinear(phi, 0, Math.PI, this.verticalMin, this.verticalMax);
-                }
+                phi = MathUtils.mapLinear(phi, 0, Math.PI, this.verticalMin, this.verticalMax);
                 var position = this.camera.position;
                 targetPosition.setFromSphericalCoords(1, phi, theta).add(position);
                 this.camera.lookAt(targetPosition);
@@ -485,27 +484,58 @@ var FirstPersonControls = function (scene, camera, domElement,
                 this.directRay.setFromCamera(new Vector2(0, 0), this.camera);
                 let selectedBoxes = this.directRay.intersectObjects(this.objects);
                 if (selectedBoxes.length > 0) {
-                    if (selectedBoxes[0] && selectedBoxes[0].distance <= 300) {
+                    let selectedBox;
+                    // 有可能是在植物中点击的
+                    if (Math.round(this.camera.position.x/100) === Math.round(selectedBoxes[0].object.position.x/100) &&
+                        Math.floor(this.camera.position.y/100) === Math.floor(selectedBoxes[0].object.position.y/100) &&
+                        Math.round(this.camera.position.z/100) === Math.round(selectedBoxes[0].object.position.z/100)
+                    ) {
+                        if (selectedBoxes.length === 1) {
+                            return;
+                        } else {
+                            selectedBox = selectedBoxes[1];
+                        }
+                    } else {
+                        selectedBox = selectedBoxes[0];
+                    }
+                    if (selectedBox && selectedBox.distance <= 500) {
                         // 左键点击，创建新的方块
                         if (type === 0) {
-                            if (this.boxType !== 3 ||
-                                this.boxHelper.isBlockExist(Math.floor(selectedBoxes[0].object.position.x / 100),
-                                    Math.floor(selectedBoxes[0].object.position.y / 100) + 1,
-                                    Math.floor(selectedBoxes[0].object.position.z / 100)) === -1) {
-                                let newBox = addNewBox(selectedBoxes[0],
-                                    this.boxHelper.createDataHandler, this.boxType);
-                                this.scene.add(newBox);
-                                this.objects.push(newBox);
+                            if (this.boxType >= 8) {
+                                let groundType = this.boxHelper.isBlockExist(
+                                    Math.floor(selectedBox.object.position.x / 100),
+                                    Math.floor(selectedBox.object.position.y / 100),
+                                    Math.floor(selectedBox.object.position.z / 100));
+                                if (groundType !== 0 && groundType !== 2) {
+                                    return;
+                                }
                             }
+                            let newBox = addNewBox(selectedBox,
+                                this.boxHelper.createDataHandler, this.boxType, this.camera.position);
+                            if (newBox === null) {
+                                return;
+                            }
+                            if (this.boxType < 8 && !(selectedBox.object.geometry instanceof THREE.BoxGeometry)) {
+                                let index = this.objects.findIndex(
+                                    e => e.id === selectedBox.object.id);
+                                this.objects.splice(index, 1);
+                                this.boxHelper.removeDataHandler(
+                                    Math.floor(selectedBox.object.position.x / 100),
+                                    Math.floor(selectedBox.object.position.y / 100),
+                                    Math.floor(selectedBox.object.position.z / 100));
+                                this.scene.remove(this.scene.getObjectById(selectedBox.object.id));
+                            }
+                            this.scene.add(newBox);
+                            this.objects.push(newBox);
                         } else {
                             let index = this.objects.findIndex(
-                                e => e.id === selectedBoxes[0].object.id);
+                                e => e.id === selectedBox.object.id);
                             this.objects.splice(index, 1);
                             this.boxHelper.removeDataHandler(
-                                Math.floor(selectedBoxes[0].object.position.x / 100),
-                                Math.floor(selectedBoxes[0].object.position.y / 100),
-                                Math.floor(selectedBoxes[0].object.position.z / 100));
-                            this.scene.remove(this.scene.getObjectById(selectedBoxes[0].object.id));
+                                Math.floor(selectedBox.object.position.x / 100),
+                                Math.floor(selectedBox.object.position.y / 100),
+                                Math.floor(selectedBox.object.position.z / 100));
+                            this.scene.remove(this.scene.getObjectById(selectedBox.object.id));
                         }
                     }
                 }
@@ -531,6 +561,7 @@ var FirstPersonControls = function (scene, camera, domElement,
         this.domElement.removeEventListener('mousedown', _onMouseDown, false);
         this.domElement.removeEventListener('mousemove', _onMouseMove, false);
         this.domElement.removeEventListener('mouseup', _onMouseUp, false);
+        this.domElement.removeEventListener('mousewheel', this.boxHelper.onMouseWheelHandler, false);
 
         window.removeEventListener('keydown', _onKeyDown, false);
         window.removeEventListener('keyup', _onKeyUp, false);

@@ -9,7 +9,7 @@
         >
         </el-alert>
         <img class="blockerImg" :src="blockUrl" alt=""/>
-        <img src="../assets/img/cross.png" class="cross" alt=""/>
+        <img src="../assets/img/cross.png" class="cross" alt="" oncontextmenu="return false"/>
         <el-dialog
                 class="menu"
                 title="菜单"
@@ -56,9 +56,16 @@
                 blockUrl: "/textures/dirt.png",
                 blockerList: [
                     "/textures/dirt.png",
-                    "/textures/grass_dirt.png",
                     "/textures/brick.png",
-                    "/textures/tallgrass.png"
+                    "/textures/grass_dirt.png",
+                    "/textures/stone.png",
+                    "/textures/glass.png",
+                    "/textures/tree_side.png",
+                    "/textures/brick_brown.png",
+                    "/textures/leaves.png",
+                    "/textures/tallgrass.png",
+                    "/textures/rose.png",
+                    "/textures/tulip.png",
                 ],
                 menuShow: false,
                 fullscreenLoading: false,
@@ -92,6 +99,8 @@
             this.createNewWorld();
             this.init();
             this.animate();
+            document.getElementById("container").setAttribute(
+                "style", "cursor: default;")
         },
         methods: {
             init() {
@@ -119,7 +128,7 @@
                 var ambientLight = new THREE.AmbientLight(0xcccccc);
                 this.scene.add(ambientLight);
                 // 添加直射光线，模拟日照
-                var directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+                var directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
                 directionalLight.position.set(1, 1, 0.5).normalize();
                 this.scene.add(directionalLight);
 
@@ -134,10 +143,9 @@
                 );
 
                 this.controls.movementSpeed = 500;
-                this.controls.lookSpeed = 0.1;
-                this.controls.constrainVertical = true;
-                this.controls.verticalMin = 1.1;
-                this.controls.verticalMax = 2.2;
+                this.controls.lookSpeed = 0.2;
+                this.controls.verticalMin = 0;
+                this.controls.verticalMax = Math.PI;
 
                 this.clock = new THREE.Clock();
 
@@ -160,6 +168,80 @@
                         ])
                     }
                     this.data.push(temp);
+                }
+                // 随机生成一棵树
+                if (width > 8) {
+                    // 最外层叶子
+                    let i = 1;
+                    for (let j = 1; j < 6; j++) {
+                        this.data[i][j].push({
+                            start: 35,
+                            end: 35,
+                            type: 7
+                        });
+                    }
+                    for (let j = 1; j < 6; j++) {
+                        this.data[j][i].push({
+                            start: 35,
+                            end: 35,
+                            type: 7
+                        });
+                    }
+                    i = 5;
+                    for (let j = 1; j < 6; j++) {
+                        this.data[i][j].push({
+                            start: 35,
+                            end: 35,
+                            type: 7
+                        });
+                    }
+                    for (let j = 1; j < 6; j++) {
+                        this.data[j][i].push({
+                            start: 35,
+                            end: 35,
+                            type: 7
+                        });
+                    }
+                    i = 2;
+                    for (let j = 2; j < 5; j++) {
+                        this.data[i][j].push({
+                            start: 35,
+                            end: 36,
+                            type: 7
+                        });
+                    }
+                    for (let j = 2; j < 5; j++) {
+                        this.data[j][i].push({
+                            start: 35,
+                            end: 36,
+                            type: 7
+                        });
+                    }
+                    i = 4;
+                    for (let j = 2; j < 5; j++) {
+                        this.data[i][j].push({
+                            start: 35,
+                            end: 36,
+                            type: 7
+                        });
+                    }
+                    for (let j = 2; j < 5; j++) {
+                        this.data[j][i].push({
+                            start: 35,
+                            end: 36,
+                            type: 7
+                        });
+                    }
+                    this.data[3][3].push({
+                        start: 31,
+                        end: 36,
+                        type: 5
+                    });
+                    this.data[3][3].push({
+                        start: 37,
+                        end: 37,
+                        type: 7
+                    });
                 }
             },
             animate() {
@@ -190,9 +272,13 @@
             },
             pauseViewChange() {
                 this.controls.lockView();
+                document.getElementById("container").setAttribute(
+                    "style", "cursor: default;")
             },
             recoverViewChange() {
                 this.controls.releaseView();
+                document.getElementById("container").setAttribute(
+                    "style", "cursor: none;")
             },
             escHandler() {
                 this.pauseViewChange();
@@ -408,9 +494,9 @@
                 event.preventDefault();
                 event.stopPropagation();
                 if (event.wheelDelta < 0) {
-                    this.controls.boxType = (this.controls.boxType + 1) % 4;
+                    this.controls.boxType = (this.controls.boxType + 1) % 11;
                 } else {
-                    this.controls.boxType = (this.controls.boxType + 3) % 4;
+                    this.controls.boxType = (this.controls.boxType + 10) % 11;
                 }
                 this.blockUrl = this.blockerList[this.controls.boxType];
             }
@@ -422,9 +508,6 @@
     body {
         background-color: #fff;
         color: #61443e;
-    }
-
-    #container {
     }
 
     .cross {
