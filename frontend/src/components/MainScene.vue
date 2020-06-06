@@ -16,7 +16,7 @@
             <el-button class="MineCraftButton" @click="returnToMainPage">
                 <span>返回主页</span>
             </el-button>
-            <el-button class="MineCraftButton" @click="menuShow = false">
+            <el-button class="MineCraftButton" @click="returnToGame">
                 <span>回到游戏</span>
             </el-button>
         </el-dialog>
@@ -124,7 +124,6 @@
                 }).then((response) => {
                     if (response.status === 200) {
                         this.data = eval(response.data.fileContent);
-                        console.log(this.data);
                         this.worldWidth = eval(response.data.worldSize);
                         this.fileId = response.data.fileId;
                         this.fullscreenLoading = false;
@@ -180,11 +179,6 @@
                     this.renderer.domElement, this.data, this.objects, this.worldWidth,
                     this.escHandler, this.boxHelper
                 );
-
-                this.controls.movementSpeed = 500;
-                this.controls.lookSpeed = 0.2;
-                this.controls.verticalMin = 0;
-                this.controls.verticalMax = Math.PI;
 
                 this.clock = new THREE.Clock();
 
@@ -315,13 +309,17 @@
                     "style", "cursor: default;")
             },
             recoverViewChange() {
+                console.log("r");
                 this.controls.releaseView();
                 document.getElementById("container").setAttribute(
                     "style", "cursor: none;")
             },
             escHandler() {
-                this.pauseViewChange();
-                this.menuShow = true;
+                // 解除pointer lock的时候
+                if (document.pointerLockElement !== document.body) {
+                    this.pauseViewChange();
+                    this.menuShow = true;
+                }
             },
             closeMenu() {
                 this.recoverViewChange();
@@ -594,6 +592,10 @@
                 } else {
                     this.$router.push("/");
                 }
+            },
+            returnToGame() {
+                this.recoverViewChange();
+                this.menuShow = false;
             },
             confirmReturn() {
                 this.$router.push("/");

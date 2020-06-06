@@ -34,8 +34,8 @@ var FirstPersonControls = function (scene, camera, domElement,
     this.directRay = new Raycaster();
     this.boxType = 0;
 
-    this.movementSpeed = 1.0;
-    this.lookSpeed = 0.005;
+    this.movementSpeed = 500;
+    this.lookSpeed = 2;
 
     this.verticalMin = 0;
     this.verticalMax = Math.PI;
@@ -67,6 +67,8 @@ var FirstPersonControls = function (scene, camera, domElement,
     var spherical = new Spherical();
     var target = new Vector3();
 
+    document.body.requestPointerLock();
+
     if (this.domElement !== document) {
 
         this.domElement.setAttribute('tabindex', -1);
@@ -91,6 +93,10 @@ var FirstPersonControls = function (scene, camera, domElement,
 
     this.onMouseDown = function (event) {
 
+        if (this.viewLock) {
+            return;
+        }
+
         if (this.domElement !== document) {
             this.domElement.focus();
         }
@@ -112,6 +118,9 @@ var FirstPersonControls = function (scene, camera, domElement,
     };
 
     this.onMouseUp = function (event) {
+        if (this.viewLock) {
+            return;
+        }
 
         event.preventDefault();
         event.stopPropagation();
@@ -128,27 +137,29 @@ var FirstPersonControls = function (scene, camera, domElement,
     this.onMouseMove = function (event) {
 
         if (this.domElement === document) {
-            if (Math.abs(event.pageX - this.viewHalfX) < 100) {
+            if (Math.abs(event.pageX - this.viewHalfX) < 0) {
                 this.mouseX = 0;
             } else {
                 this.mouseX = event.pageX - this.viewHalfX;
             }
-            if (Math.abs(event.pageY - this.viewHalfY) < 100) {
+            if (Math.abs(event.pageY - this.viewHalfY) < 0) {
                 this.mouseY = 0;
             } else {
                 this.mouseY = event.pageY - this.viewHalfY;
             }
 
         } else {
-            if (Math.abs(event.pageX - this.domElement.offsetLeft - this.viewHalfX) < 100) {
+            if (Math.abs(event.pageX - this.domElement.offsetLeft - this.viewHalfX) < 0) {
                 this.mouseX = 0;
             } else {
-                this.mouseX = event.pageX - this.domElement.offsetLeft - this.viewHalfX;
+                // this.mouseX = event.pageX - this.domElement.offsetLeft - this.viewHalfX;
+                this.mouseX = event.movementX;
             }
-            if (Math.abs(event.pageY - this.domElement.offsetTop - this.viewHalfY) < 100) {
+            if (Math.abs(event.pageY - this.domElement.offsetTop - this.viewHalfY) < 0) {
                 this.mouseY = 0;
             } else {
-                this.mouseY = event.pageY - this.domElement.offsetTop - this.viewHalfY;
+                // this.mouseY = event.pageY - this.domElement.offsetTop - this.viewHalfY;
+                this.mouseY = event.movementY;
             }
         }
 
@@ -156,7 +167,8 @@ var FirstPersonControls = function (scene, camera, domElement,
 
     this.onKeyDown = function (event) {
 
-        // event.preventDefault();
+        event.preventDefault();
+        event.stopPropagation();
 
         switch (event.keyCode) {
 
@@ -178,10 +190,6 @@ var FirstPersonControls = function (scene, camera, domElement,
             case 39: // right
             case 68: // D
                 this.moveRight = true;
-                break;
-
-            case 27: // esc
-                this.escHandler();
                 break;
 
             case 32: // space
@@ -544,27 +552,18 @@ var FirstPersonControls = function (scene, camera, domElement,
 
     this.lockView = () => {
         this.viewLock = true;
+        document.exitPointerLock();
     };
 
     this.releaseView = () => {
+        console.log("recover");
         this.viewLock = false;
+        document.body.requestPointerLock();
     };
-
 
     function contextmenu(event) {
         event.preventDefault();
     }
-
-    this.dispose = function () {
-        this.domElement.removeEventListener('contextmenu', contextmenu, false);
-        this.domElement.removeEventListener('mousedown', _onMouseDown, false);
-        this.domElement.removeEventListener('mousemove', _onMouseMove, false);
-        this.domElement.removeEventListener('mouseup', _onMouseUp, false);
-        this.domElement.removeEventListener('mousewheel', this.boxHelper.onMouseWheelHandler, false);
-
-        window.removeEventListener('keydown', _onKeyDown, false);
-        window.removeEventListener('keyup', _onKeyUp, false);
-    };
 
     var _onMouseMove = bind(this, this.onMouseMove);
     var _onMouseDown = bind(this, this.onMouseDown);
@@ -573,9 +572,10 @@ var FirstPersonControls = function (scene, camera, domElement,
     var _onKeyUp = bind(this, this.onKeyUp);
 
     this.domElement.addEventListener('contextmenu', contextmenu, false);
-    this.domElement.addEventListener('mousemove', _onMouseMove, false);
-    this.domElement.addEventListener('mousedown', _onMouseDown, false);
-    this.domElement.addEventListener('mouseup', _onMouseUp, false);
+    document.addEventListener('mousemove', _onMouseMove, false);
+    document.addEventListener('mousedown', _onMouseDown, false);
+    document.addEventListener('mouseup', _onMouseUp, false);
+    document.addEventListener('pointerlockchange', escHandler, false );
     this.domElement.addEventListener('mousewheel', this.boxHelper.onMouseWheelHandler, false);
 
     window.addEventListener('keydown', _onKeyDown, false);
