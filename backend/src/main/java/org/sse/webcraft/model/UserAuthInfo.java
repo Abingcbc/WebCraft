@@ -13,7 +13,6 @@ import java.util.Collection;
 public class UserAuthInfo implements UserDetails {
     private String username;
     private String password;
-    private String email;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

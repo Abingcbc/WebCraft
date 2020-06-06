@@ -1,13 +1,5 @@
 <template>
     <div id="container">
-        <el-alert
-                :title="alertTitle"
-                type="success"
-                center
-                show-icon
-                v-if="showAlert"
-        >
-        </el-alert>
         <img class="blockerImg" :src="blockUrl" alt=""/>
         <img src="../assets/img/cross.png" class="cross" alt="" oncontextmenu="return false"/>
         <el-dialog
@@ -18,16 +10,39 @@
                 :before-close="closeMenu"
                 v-loading.fullscreen.lock="fullscreenLoading"
         >
-            <el-button class="MineCraftButton">
+            <el-button class="MineCraftButton" @click="saveWorld">
                 <span>保存</span>
             </el-button>
-            <el-button class="MineCraftButton">
+            <el-button class="MineCraftButton" @click="returnToMainPage">
                 <span>返回主页</span>
             </el-button>
-            <el-button class="MineCraftButton">
+            <el-button class="MineCraftButton" @click="menuShow = false">
                 <span>回到游戏</span>
             </el-button>
         </el-dialog>
+        <el-dialog
+                class="menu"
+                title="世界未保存，是否返回？"
+                :visible.sync="confirmShow"
+                width="30%"
+                :before-close="closeConfirm"
+        >
+            <el-button class="MineCraftButton" @click="confirmShow = false">
+                <span>取消</span>
+            </el-button>
+            <el-button class="MineCraftButton" @click="confirmReturn">
+                <span>确定</span>
+            </el-button>
+        </el-dialog>
+        <el-alert
+                :title="alertTitle"
+                type="success"
+                center
+                show-icon
+                v-if="showAlert"
+                style="position: absolute"
+        >
+        </el-alert>
     </div>
 </template>
 
@@ -43,6 +58,7 @@
         name: "MainScene",
         data() {
             return {
+                fileId: 0,
                 filename: "",
                 worldWidth: 10,
                 data: [], // 自定义的JSON格式，为了判断高度以及保存
@@ -68,7 +84,7 @@
                     "/textures/tulip.png",
                 ],
                 menuShow: false,
-                fullscreenLoading: false,
+                fullscreenLoading: true,
                 boxHelper: {
                     createDataHandler: this.createDataHandler,
                     removeDataHandler: this.removeDataHandler,
@@ -77,30 +93,53 @@
                     onMouseWheelHandler: this.onMouseWheelHandler
                 },
                 alertTitle: "",
-                showAlert: false
+                showAlert: false,
+                modified: false,
+                confirmShow: false
             }
         },
         mounted() {
             // 非法进入
-            // if (this.$route.params.type === undefined ||
-            //     localStorage.getItem("WebCraftToken") === undefined) {
-            //     this.$router.push("/");
-            // }
-            // if (this.$route.params.type === 'new') {
-            //     this.filename = this.$route.params.info.filename;
-            //     this.worldWidth = this.$route.params.info.worldSize;
-            //     this.createNewWorld();
-            // } else {
-            //     // this.$axios({
-            //     //     method: 'get',
-            //     //     url: ''
-            //     // })
-            // }
-            this.createNewWorld();
-            this.init();
-            this.animate();
-            document.getElementById("container").setAttribute(
-                "style", "cursor: default;")
+            if (this.$route.params.type === undefined ||
+                localStorage.getItem("WebCraftToken") === undefined) {
+                this.$router.push("/");
+            }
+            if (this.$route.params.type === 'new') {
+                this.filename = this.$route.params.info.filename;
+                this.worldWidth = this.$route.params.info.worldSize;
+                this.createNewWorld();
+                this.init();
+                this.animate();
+                document.getElementById("container").setAttribute(
+                    "style", "cursor: none;")
+            } else {
+                this.fileId = this.$route.params.info.fileId;
+                this.$axios({
+                    method: 'get',
+                    url: '/api/file/' + localStorage.getItem("WebCraftUser")
+                        + '/' + this.$route.params.info.fileId,
+                    headers: {
+                        'Authorization': 'bearer ' + localStorage.getItem("WebCraftToken")
+                    },
+                }).then((response) => {
+                    if (response.status === 200) {
+                        this.data = eval(response.data.fileContent);
+                        console.log(this.data);
+                        this.worldWidth = eval(response.data.worldSize);
+                        this.fileId = response.data.fileId;
+                        this.fullscreenLoading = false;
+                        this.showAlert = true;
+                        this.alertTitle = "加载世界成功！";
+                        setTimeout(() => {
+                            this.showAlert = false
+                        }, 2000);
+                        this.init();
+                        this.animate();
+                        document.getElementById("container").setAttribute(
+                            "style", "cursor: none;")
+                    }
+                })
+            }
         },
         methods: {
             init() {
@@ -119,7 +158,7 @@
                 ) * 100 + 150;
 
                 this.scene = new THREE.Scene();
-                this.scene.background = new THREE.Color(0xffffff);
+                this.scene.background = new THREE.Color('rgb(135,206,250)');
                 this.scene.fog = new THREE.FogExp2(0xffffff, 0.00015);
 
                 this.loadWorld();
@@ -300,7 +339,8 @@
                     data: {
                         username: localStorage.getItem("WebCraftUser"),
                         filename: this.filename,
-                        fileContent: JSON.stringify(this.data)
+                        fileContent: JSON.stringify(this.data),
+                        worldSize: this.worldWidth
                     }
                 }).then((response) => {
                     if (response.status === 200) {
@@ -318,7 +358,7 @@
                 let arrayLength = heightArray.length;
                 for (let i = 0; i < arrayLength; i++) {
                     if (i + 1 === arrayLength) {
-                        if (heightArray[i].type === type) {
+                        if (heightArray[i].type === type && y === heightArray[i].end+1) {
                             heightArray[i].end += 1;
                         } else {
                             heightArray.push({
@@ -327,6 +367,7 @@
                                 type: type
                             });
                         }
+                        this.modified = true;
                     } else {
                         if (heightArray[i] < y || y < heightArray[i + 1]) {
                             // 在已有的上面放置方块
@@ -342,6 +383,7 @@
                                     type: type
                                 })
                             }
+                            this.modified = true;
                             break;
                         }
                     }
@@ -369,9 +411,9 @@
                             });
                             heightArray[i].end = y - 1;
                         }
+                        this.modified = true;
                     }
                 }
-                this.data[x][z] = heightArray;
                 if (x - 1 >= 0 &&
                     !this.isBlockDisplayed(x - 1, y, z)) {
                     let currentBlockType = this.isBlockExist(x - 1, y, z);
@@ -444,12 +486,28 @@
                 }
             },
             shouldDisplay(x, y, z) {
-                return this.isBlockExist(x - 1, y, z) === -1 ||
-                    this.isBlockExist(x + 1, y, z) === -1 ||
-                    this.isBlockExist(x, y + 1, z) === -1 ||
-                    this.isBlockExist(x, y - 1, z) === -1 ||
-                    this.isBlockExist(x, y, z + 1) === -1 ||
-                    this.isBlockExist(x, y, z - 1) === -1;
+                let x1 = this.isBlockExist(x - 1, y, z);
+                if (x1 === -1 || x1 === 4 || x1 >= 7) {
+                    return true;
+                }
+                let x2 = this.isBlockExist(x + 1, y, z);
+                if (x2 === -1 || x2 === 4 || x2 >= 7) {
+                    return true;
+                }
+                let y1 = this.isBlockExist(x, y - 1, z);
+                if (y1 === -1 || y1 === 4 || y1 >= 7) {
+                    return true;
+                }
+                let y2 = this.isBlockExist(x, y + 1, z);
+                if (y2 === -1 || y2 === 4 || y2 >= 7) {
+                    return true;
+                }
+                let z1 = this.isBlockExist(x, y, z - 1);
+                if (z1 === -1 || z1 === 4 || z1 >= 7) {
+                    return true;
+                }
+                let z2 = this.isBlockExist(x, y, z + 1);
+                return z2 === -1 || z2 === 4 || z2 >= 7;
             },
             isBlockExist(x, y, z) {
                 if (x < 0 || x >= this.worldWidth || z < 0 || z >= this.worldWidth) {
@@ -499,6 +557,50 @@
                     this.controls.boxType = (this.controls.boxType + 10) % 11;
                 }
                 this.blockUrl = this.blockerList[this.controls.boxType];
+            },
+            saveWorld() {
+                if (this.modified) {
+                    this.$axios({
+                        method: 'post',
+                        url: '/api/save',
+                        headers: {
+                            'Authorization': 'bearer ' + localStorage.getItem("WebCraftToken")
+                        },
+                        data: {
+                            fileId: this.fileId,
+                            fileContent: JSON.stringify(this.data)
+                        }
+                    }).then((response) => {
+                        if (response.status === 200) {
+                            this.modified = false;
+                            this.showAlert = true;
+                            this.alertTitle = "保存成功！";
+                            setTimeout(() => {
+                                this.showAlert = false
+                            }, 2000);
+                        }
+                    })
+                } else {
+                    this.showAlert = true;
+                    this.alertTitle = "无新的内容！";
+                    setTimeout(() => {
+                        this.showAlert = false
+                    }, 2000);
+                }
+            },
+            returnToMainPage() {
+                if (this.modified) {
+                    this.confirmShow = true;
+                } else {
+                    this.$router.push("/");
+                }
+            },
+            confirmReturn() {
+                this.$router.push("/");
+            },
+            closeConfirm() {
+                this.recoverViewChange();
+                this.confirmShow = false;
             }
         }
     }

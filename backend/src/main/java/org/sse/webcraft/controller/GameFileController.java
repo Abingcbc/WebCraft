@@ -19,7 +19,7 @@ public class GameFileController {
     @PostMapping("/create")
     public void createGameFile(@RequestBody GameFile gameFile,
                              HttpServletResponse response) {
-        log.info(String.valueOf(gameFile));
+        log.info(gameFile.getUsername());
         gameFileMapper.createNewGameFile(gameFile.getUsername(),
                 gameFile.getFilename(),
                 gameFile.getFileContent(),

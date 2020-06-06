@@ -150,7 +150,6 @@ var FirstPersonControls = function (scene, camera, domElement,
             } else {
                 this.mouseY = event.pageY - this.domElement.offsetTop - this.viewHalfY;
             }
-
         }
 
     };
@@ -459,10 +458,8 @@ var FirstPersonControls = function (scene, camera, domElement,
             //视角控制
             if (!this.viewLock) {
                 var actualLookSpeed = delta * this.lookSpeed;
-                var verticalLookRatio = 1;
-                verticalLookRatio = Math.PI / (this.verticalMax - this.verticalMin);
                 lon -= this.mouseX * actualLookSpeed;
-                lat -= this.mouseY * actualLookSpeed * verticalLookRatio;
+                lat -= this.mouseY * actualLookSpeed;
                 lat = Math.max(-85, Math.min(85, lat));
                 var phi = MathUtils.degToRad(90 - lat);
                 var theta = MathUtils.degToRad(lon);
@@ -470,6 +467,8 @@ var FirstPersonControls = function (scene, camera, domElement,
                 var position = this.camera.position;
                 targetPosition.setFromSphericalCoords(1, phi, theta).add(position);
                 this.camera.lookAt(targetPosition);
+                this.mouseX = 0;
+                this.mouseY = 0;
             }
 
             // 创建控制

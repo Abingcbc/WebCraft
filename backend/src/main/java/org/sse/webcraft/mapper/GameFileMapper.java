@@ -21,12 +21,12 @@ public interface GameFileMapper {
             "where fileId = #{fileId};")
     GameFile getGameFileByFileId(@Param("fileId") int fileId);
 
-    @Select("select fileId, username, fileName, createTime, updateTime from GameFile\n" +
+    @Select("select fileId, username, fileName, createTime, updateTime, worldSize from GameFile\n" +
             "where username = #{username};")
     List<GameFile> getGameFileListWithoutContent(@Param("username") String username);
 
     @Update("update GameFile\n" +
-            "set fileContent = #{fileContent} and updateTime = NOW()\n" +
+            "set fileContent = #{fileContent} , updateTime = NOW()\n" +
             "where fileId = #{fileId};")
     int updateGameFileContent(@Param("fileContent") String fileContent,
                               @Param("fileId") int fileId);

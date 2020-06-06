@@ -6,6 +6,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.sse.webcraft.mapper.UserMapper;
+import org.sse.webcraft.model.UserAuthInfo;
 
 @Slf4j
 @Service
@@ -32,6 +33,6 @@ public class UserService {
     public boolean checkTokenPermission(Authentication authentication,
                                            String username) {
         log.info(authentication.getPrincipal().toString());
-        return authentication.getPrincipal() == username;
+        return ((UserAuthInfo) authentication.getPrincipal()).getUsername().equals(username);
     }
 }

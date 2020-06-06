@@ -282,6 +282,10 @@ const createBox = function (x, y, z, type) {
         geometry.faceVertexUvs[0][1] = [imagePoint[0], imagePoint[2], imagePoint[3]];
         geometry.faceVertexUvs[0][2] = geometry.faceVertexUvs[0][0];
         geometry.faceVertexUvs[0][3] = geometry.faceVertexUvs[0][1];
+        // 透明，所以不需要贴图
+        for (let i = 4; i < 16; i++) {
+            geometry.faceVertexUvs[0][i] = [new THREE.Vector2(), new THREE.Vector2(), new THREE.Vector2()]
+        }
         geometry.computeFaceNormals();
         let result = new Mesh(geometry,
             loadMaterials(type));

@@ -90,15 +90,40 @@
                     世界大小：{{world.worldSize}}
                 </el-row>
                 <el-row>
-                    创建时间：{{world.createTime}}
+                    创建时间
                 </el-row>
                 <el-row>
-                    最近修改时间：{{world.updateTime}}
+                    {{world.createTime}}
+                </el-row>
+                <el-row>
+                    最近修改时间：
+                </el-row>
+                <el-row>
+                    {{world.updateTime}}
                 </el-row>
             </el-button>
             <div slot="footer" class="dialog-footer">
+                <el-button type="primary" @click="deleteFile" class="MineCraftButton">删 除</el-button>
                 <el-button @click="showLoad = false" class="MineCraftButton">取 消</el-button>
                 <el-button type="primary" @click="confirmFile" class="MineCraftButton">确 定</el-button>
+            </div>
+        </el-dialog>
+        <div>
+            <el-button class="MineCraftButton" @click="showTutorial = true">
+                <span>教程</span>
+            </el-button>
+        </div>
+        <el-dialog title="教程" :visible.sync="showTutorial">
+            <div class="tutorial" >
+                <el-row>WASD / 方向键 控制移动</el-row>
+                <el-row>Q 开启/关闭创造模式</el-row>
+                <el-row>   R / F     创造模式下上下移动</el-row>
+                <el-row>   space     跳跃           </el-row>
+                <el-row>    esc      打开菜单        </el-row>
+                <el-row>鼠标移动控制视角</el-row>
+                <el-row>鼠标左键创建方块</el-row>
+                <el-row>鼠标右键消除方块</el-row>
+                <el-row>鼠标滑轮切换方块</el-row>
             </div>
         </el-dialog>
         <div>
@@ -135,11 +160,12 @@
                 },
                 showLoad: false,
                 savedWorldList: [],
-                chosenFileIndex: 0,
+                chosenFileIndex: -1,
                 successAlert: "",
                 errorAlert: "",
                 showSuccessAlert: false,
-                showErrorAlert: false
+                showErrorAlert: false,
+                showTutorial: false
             }
         },
         mounted() {
@@ -161,7 +187,8 @@
                     params: {
                         'grant_type': 'password',
                         'username': this.loginForm.username,
-                        'password': this.loginForm.password
+                        'password': this.loginForm.password,
+                        'scope': 'ui'
                     }
                 }).then((response) => {
                     if (response.status === 200) {
@@ -183,8 +210,8 @@
                         method: 'post',
                         url: '/api/register',
                         data: {
-                            'username': this.loginForm.username,
-                            'password': this.loginForm.password
+                            'username': this.registerForm.username,
+                            'password': this.registerForm.password
                         }
                     }).then((response) => {
                         if (response.status === 200) {
@@ -207,7 +234,6 @@
                 })
             },
             load() {
-                console.log('bearer ' + localStorage.getItem("WebCraftToken"));
                 this.$axios({
                     method: 'get',
                     headers: {
@@ -225,13 +251,36 @@
                 this.chosenFileIndex = index;
             },
             confirmFile() {
-                this.$router.push({
-                    name: 'main',
-                    params: {
-                        'type': 'old',
-                        'info': this.savedWorldList[this.chosenFileIndex]
-                    }
-                });
+                if (this.chosenFileIndex < 0) {
+                    this.alertError("请选择存档！");
+                } else {
+                    this.$router.push({
+                        name: 'main',
+                        params: {
+                            'type': 'old',
+                            'info': this.savedWorldList[this.chosenFileIndex]
+                        }
+                    });
+                }
+            },
+            deleteFile() {
+                if (this.chosenFileIndex < 0) {
+                    this.alertError("请选择存档！");
+                } else {
+                    this.$axios({
+                        method: 'post',
+                        headers: {
+                            'Authorization': 'bearer ' + localStorage.getItem("WebCraftToken")
+                        },
+                        url: '/api/delete/' + localStorage.getItem("WebCraftUser") + "/" +
+                            this.savedWorldList[this.chosenFileIndex].fileId
+                    }).then((response) => {
+                        if (response.status === 200) {
+                            this.alertSuccess("删除成功！");
+                            this.showLoad = false;
+                        }
+                    });
+                }
             },
             logout() {
                 localStorage.removeItem("WebCraftToken");
@@ -299,6 +348,12 @@
         background-image: url('http://charliecowan.co.uk/mcbuttongenerator/button_center.png');
         background-repeat: repeat;
         font-family: Minecraft;
+        color: white;
+    }
+
+    .tutorial {
+        font-family: Minecraft;
+        font-size: 25px;
         color: white;
     }
 
