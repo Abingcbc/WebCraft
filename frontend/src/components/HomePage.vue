@@ -5,16 +5,18 @@
                 :title="successAlert"
                 center
                 show-icon
-                type="success">
+                type="success"
+                style="position: absolute">
         </el-alert>
         <el-alert
                 v-if="showErrorAlert"
                 :title="errorAlert"
                 center
                 show-icon
-                type="error">
+                type="error"
+                style="position: absolute">
         </el-alert>
-        <div style="padding-top: 100px; padding-bottom: 100px">
+        <div style="padding-top: 100px; padding-bottom: 30px">
             <img src="../assets/webcraft.png" alt=""/>
         </div>
         <div>
@@ -109,6 +111,22 @@
             </div>
         </el-dialog>
         <div>
+            <el-button class="MineCraftButton" @click="showShare = true" v-if="logined">
+                <span>从分享码加载</span>
+            </el-button>
+        </div>
+        <el-dialog title="从分享码加载" :visible.sync="showShare">
+            <el-form style="width: 300px; margin: 0px auto">
+                <el-form-item label="分享码">
+                    <el-input v-model="shareCode" autocomplete="off" class="MineCraftInput"/>
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button @click="showShare = false" class="MineCraftButton">取 消</el-button>
+                <el-button type="primary" @click="loadShare" class="MineCraftButton">确 定</el-button>
+            </div>
+        </el-dialog>
+        <div>
             <el-button class="MineCraftButton" @click="showTutorial = true">
                 <span>教程</span>
             </el-button>
@@ -165,7 +183,9 @@
                 errorAlert: "",
                 showSuccessAlert: false,
                 showErrorAlert: false,
-                showTutorial: false
+                showTutorial: false,
+                showShare: false,
+                shareCode: ""
             }
         },
         mounted() {
@@ -300,6 +320,14 @@
                 setTimeout(() => {
                     this.showErrorAlert = false;
                 }, 2000);
+            },
+            loadShare() {
+                this.$router.push({
+                    name: 'main',
+                    params: {
+                        'type': 'code', 'info': this.shareCode
+                    }
+                })
             }
         }
     }

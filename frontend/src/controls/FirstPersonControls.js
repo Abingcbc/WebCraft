@@ -305,7 +305,6 @@ var FirstPersonControls = function (scene, camera, domElement,
                     if (this.camera.position.y - jumpSpeed <= this.minJumpHeight) {
                         this.camera.position.y = this.minJumpHeight;
                         this.jump = 0;
-                        this.minJumpHeight = 0;
                     } else {
                         this.camera.position.y -= jumpSpeed;
                     }
@@ -497,10 +496,17 @@ var FirstPersonControls = function (scene, camera, domElement,
                         Math.floor(this.camera.position.y/100) === Math.floor(selectedBoxes[0].object.position.y/100) &&
                         Math.round(this.camera.position.z/100) === Math.round(selectedBoxes[0].object.position.z/100)
                     ) {
-                        if (selectedBoxes.length === 1) {
+                        for (let i = 1; i < selectedBoxes.length; i++) {
+                            if (!selectedBoxes[0].object.position.equals(selectedBoxes[i].object.position)) {
+                                if (selectedBoxes[0].object.position.x !== selectedBoxes[i].object.position.x ||
+                                selectedBoxes[0].object.position.z !== selectedBoxes[i].object.position.z) {
+                                    selectedBox = selectedBoxes[i];
+                                }
+                                break;
+                            }
+                        }
+                        if (!selectedBox) {
                             return;
-                        } else {
-                            selectedBox = selectedBoxes[1];
                         }
                     } else {
                         selectedBox = selectedBoxes[0];
@@ -532,9 +538,16 @@ var FirstPersonControls = function (scene, camera, domElement,
                                     Math.floor(selectedBox.object.position.z / 100));
                                 this.scene.remove(this.scene.getObjectById(selectedBox.object.id));
                             }
+                            if (this.minJumpHeight < newBox.position.y+150) {
+                                this.minJumpHeight = newBox.position.y+150;
+                            }
                             this.scene.add(newBox);
                             this.objects.push(newBox);
                         } else {
+                            // 挖到底了。。。不允许再挖了
+                            if (selectedBox.object.position.y < 200) {
+                                return;
+                            }
                             let index = this.objects.findIndex(
                                 e => e.id === selectedBox.object.id);
                             this.objects.splice(index, 1);
@@ -543,6 +556,13 @@ var FirstPersonControls = function (scene, camera, domElement,
                                 Math.floor(selectedBox.object.position.y / 100),
                                 Math.floor(selectedBox.object.position.z / 100));
                             this.scene.remove(this.scene.getObjectById(selectedBox.object.id));
+                            if (Math.round(selectedBox.object.position.x/100) === Math.round(this.camera.position.x/100) &&
+                            Math.round(selectedBox.object.position.z/100) === Math.round(this.camera.position.z)/100) {
+                                if (this.jump === 0) {
+                                    this.jump = 2;
+                                }
+                                this.minJumpHeight = this.camera.position.y - 100;
+                            }
                         }
                     }
                 }
@@ -556,7 +576,6 @@ var FirstPersonControls = function (scene, camera, domElement,
     };
 
     this.releaseView = () => {
-        console.log("recover");
         this.viewLock = false;
         document.body.requestPointerLock();
     };
@@ -582,13 +601,9 @@ var FirstPersonControls = function (scene, camera, domElement,
     window.addEventListener('keyup', _onKeyUp, false);
 
     function bind(scope, fn) {
-
         return function () {
-
             fn.apply(scope, arguments);
-
         };
-
     }
 
     function setOrientation(controls) {

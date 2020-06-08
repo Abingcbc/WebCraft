@@ -24,7 +24,7 @@ DROP TABLE IF EXISTS `GameFile`;
 CREATE TABLE `GameFile` (
   `fileId` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(255) DEFAULT NULL,
-  `fileName` varchar(255) DEFAULT NULL,
+  `filename` varchar(255) DEFAULT NULL,
   `createTime` datetime DEFAULT NULL,
   `updateTime` datetime DEFAULT NULL,
   `fileContent` text,

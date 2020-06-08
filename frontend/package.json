@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "WebCraft",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -14,6 +14,7 @@
     "stats-js": "^1.0.1",
     "three": "^0.116.1",
     "vue": "^2.6.11",
+    "vue-clipboard2": "^0.3.1",
     "vue-router": "^3.1.6"
   },
   "devDependencies": {

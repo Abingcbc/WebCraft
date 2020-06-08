@@ -19,6 +19,9 @@
             <el-button class="MineCraftButton" @click="returnToGame">
                 <span>回到游戏</span>
             </el-button>
+            <el-button class="MineCraftButton" @click="copyShareCode">
+                <span>分享</span>
+            </el-button>
         </el-dialog>
         <el-dialog
                 class="menu"
@@ -110,9 +113,9 @@
                 this.createNewWorld();
                 this.init();
                 this.animate();
-                document.getElementById("container").setAttribute(
-                    "style", "cursor: none;")
-            } else {
+                this.addCloud();
+            }
+            else if (this.$route.params.type === 'old') {
                 this.fileId = this.$route.params.info.fileId;
                 this.$axios({
                     method: 'get',
@@ -134,8 +137,37 @@
                         }, 2000);
                         this.init();
                         this.animate();
-                        document.getElementById("container").setAttribute(
-                            "style", "cursor: none;")
+                        this.addCloud();
+                    }
+                })
+            }
+            else {
+                this.$axios({
+                    method: 'get',
+                    url: '/api/codeFile/' + localStorage.getItem("WebCraftUser") +
+                        '/' + this.$route.params.info,
+                    headers: {
+                        'Authorization': 'bearer ' + localStorage.getItem("WebCraftToken")
+                    },
+                }).then((response) => {
+                    if (response.status === 200) {
+                        if (response.data === null) {
+                            alert("分享码错误！");
+                            this.$router.push("/");
+                            return;
+                        }
+                        this.fileId = response.data.fileId;
+                        this.data = eval(response.data.fileContent);
+                        this.worldWidth = eval(response.data.worldSize);
+                        this.fullscreenLoading = false;
+                        this.showAlert = true;
+                        this.alertTitle = "加载世界成功！";
+                        setTimeout(() => {
+                            this.showAlert = false
+                        }, 2000);
+                        this.init();
+                        this.animate();
+                        this.addCloud();
                     }
                 })
             }
@@ -305,14 +337,9 @@
             },
             pauseViewChange() {
                 this.controls.lockView();
-                document.getElementById("container").setAttribute(
-                    "style", "cursor: default;")
             },
             recoverViewChange() {
-                console.log("r");
                 this.controls.releaseView();
-                document.getElementById("container").setAttribute(
-                    "style", "cursor: none;")
             },
             escHandler() {
                 // 解除pointer lock的时候
@@ -345,6 +372,7 @@
                         this.fullscreenLoading = false;
                         this.showAlert = true;
                         this.alertTitle = "加载世界成功！";
+                        this.fileId = parseInt(response.data);
                         setTimeout(() => {
                             this.showAlert = false
                         }, 2000);
@@ -356,7 +384,7 @@
                 let arrayLength = heightArray.length;
                 for (let i = 0; i < arrayLength; i++) {
                     if (i + 1 === arrayLength) {
-                        if (heightArray[i].type === type && y === heightArray[i].end+1) {
+                        if (heightArray[i].type === type && y === heightArray[i].end + 1) {
                             heightArray[i].end += 1;
                         } else {
                             heightArray.push({
@@ -603,8 +631,50 @@
             closeConfirm() {
                 this.recoverViewChange();
                 this.confirmShow = false;
-            }
-        }
+            },
+            addCloud() {
+                let material = new THREE.MeshLambertMaterial({
+                    transparent: true,
+                    opacity: 0.8,
+                    color: 0xFFFFFF,
+                    side: THREE.DoubleSide
+                });
+                // 将所有的云merge到一起可以提高性能
+                let cloudLayer = new THREE.BoxGeometry(0, 0, 0);
+                for (let x = -100; x <= 100; x += 20) {
+                    for (let z = -100; z <= 100; z += 20) {
+                        let cloud = new THREE.Mesh(
+                            new THREE.BoxGeometry(Math.round(Math.random() * 10) * 100, 100,
+                                Math.round(Math.random() * 10) * 100),
+                            material);
+                        cloud.position.x = x * 100 - Math.round(Math.random() * 10) * 100;
+                        cloud.position.z = z * 100 - Math.round(Math.random() * 10) * 100;
+                        cloud.position.y = 5000;
+                        cloudLayer.mergeMesh(cloud);
+                    }
+                }
+                this.scene.add(new THREE.Mesh(cloudLayer, material));
+            },
+            copyShareCode() {
+                this.$axios({
+                    method: 'get',
+                    url: '/api/code/' + this.fileId,
+                    headers: {
+                        'Authorization': 'bearer ' + localStorage.getItem("WebCraftToken")
+                    }
+                }).then((response) => {
+                    if (response.status === 200) {
+                        this.$copyText(response.data)
+                            .then(function () {
+                                alert("复制分享码成功！");
+                                }, function () {
+                                alert("复制分享码失败！");
+                                }
+                            );
+                    }
+                });
+            },
+        },
     }
 </script>
 

@@ -10,18 +10,16 @@ import java.util.List;
 @Mapper
 public interface GameFileMapper {
 
-    @Insert("insert into GameFile(username, fileName, createTime, updateTime, fileContent, worldSize)\n" +
-            "value (#{username}, #{fileName}, NOW(), NOW(), #{fileContent}, #{worldSize});")
-    int createNewGameFile(@Param("username") String username,
-                          @Param("fileName") String fileName,
-                          @Param("fileContent") String fileContent,
-                          @Param("worldSize") int worldSize);
+    @Insert("insert into GameFile(username, filename, createTime, updateTime, fileContent, worldSize)\n" +
+            "value (#{username}, #{filename}, NOW(), NOW(), #{fileContent}, #{worldSize});")
+    @Options(useGeneratedKeys = true, keyProperty = "fileId", keyColumn = "fileId")
+    int createNewGameFile(GameFile gameFile);
 
     @Select("select * from GameFile\n" +
             "where fileId = #{fileId};")
     GameFile getGameFileByFileId(@Param("fileId") int fileId);
 
-    @Select("select fileId, username, fileName, createTime, updateTime, worldSize from GameFile\n" +
+    @Select("select fileId, username, filename, createTime, updateTime, worldSize from GameFile\n" +
             "where username = #{username};")
     List<GameFile> getGameFileListWithoutContent(@Param("username") String username);
 
