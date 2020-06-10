@@ -22,7 +22,7 @@ const getHeight = function (y, heightArray) {
     }
     for (let i = 0; i < heightArray.length-1; i++) {
         if (heightArray[i].type >= 8) {
-            return heightArray[i].start;
+            return heightArray[i-1].end;
         }
         if (heightArray[i].end * 100 < y && y < heightArray[i+1].start * 100) {
             return heightArray[i].end;

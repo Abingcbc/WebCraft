@@ -198,7 +198,7 @@
                 var ambientLight = new THREE.AmbientLight(0xcccccc);
                 this.scene.add(ambientLight);
                 // 添加直射光线，模拟日照
-                var directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                var directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
                 directionalLight.position.set(1, 1, 0.5).normalize();
                 this.scene.add(directionalLight);
 
@@ -373,6 +373,7 @@
                         this.showAlert = true;
                         this.alertTitle = "加载世界成功！";
                         this.fileId = parseInt(response.data);
+                        console.log(this.fileId);
                         setTimeout(() => {
                             this.showAlert = false
                         }, 2000);
@@ -393,22 +394,24 @@
                                 type: type
                             });
                         }
+                        this.createMusic(type);
                         this.modified = true;
                     } else {
-                        if (heightArray[i] < y || y < heightArray[i + 1]) {
+                        if (heightArray[i].end < y && y < heightArray[i + 1].start) {
                             // 在已有的上面放置方块
                             if (heightArray[i] + 1 === y && heightArray[i].type === type) {
                                 heightArray[i].end += 1;
-                            } else if (heightArray[i + 1].start - 1 === y && heightArray[i].type === type) {
+                            } else if (heightArray[i + 1].start - 1 === y && heightArray[i+1].type === type) {
                                 heightArray[i + 1].start -= 1;
                             } else {
                                 // 通过四周进行悬空的方块或者不同类型的方块
-                                this.data[x][z].splice(i + 1, 0, {
+                                this.data[x][z].splice(i+1, 0, {
                                     start: y,
                                     end: y,
                                     type: type
                                 })
                             }
+                            this.createMusic(type);
                             this.modified = true;
                             break;
                         }
@@ -420,6 +423,7 @@
                 for (let i = 0; i < heightArray.length; i++) {
                     // 方块一定属于某个方块段之内
                     if (heightArray[i].start <= y && y <= heightArray[i].end) {
+                        let currentType = heightArray[i].type;
                         // 方块段可以移除
                         if (heightArray[i].start === heightArray[i].end) {
                             heightArray.splice(i, 1);
@@ -436,6 +440,11 @@
                                 type: tempType
                             });
                             heightArray[i].end = y - 1;
+                        }
+                        if (currentType === 4) {
+                            this.removeMusic(20);
+                        } else {
+                            this.removeMusic(currentType);
                         }
                         this.modified = true;
                     }
@@ -537,7 +546,7 @@
             },
             isBlockExist(x, y, z) {
                 if (x < 0 || x >= this.worldWidth || z < 0 || z >= this.worldWidth) {
-                    return true;
+                    return 12;
                 }
                 let result = -1;
                 let heightArray = this.data[x][z];
@@ -575,8 +584,6 @@
                 }
             },
             onMouseWheelHandler(event) {
-                event.preventDefault();
-                event.stopPropagation();
                 if (event.wheelDelta < 0) {
                     this.controls.boxType = (this.controls.boxType + 1) % 11;
                 } else {
@@ -674,6 +681,22 @@
                     }
                 });
             },
+            createMusic(type) {
+                if (type === 0 || type === 2) {
+                    new Audio('/music/dirt.mp3').play();
+                } else if (type < 7) {
+                    new Audio('/music/wood.mp3').play();
+                }
+            },
+            removeMusic(type) {
+                if (type === 0 || type === 2) {
+                    new Audio('/music/dirt1.mp3').play();
+                } else if (type < 7) {
+                    new Audio('/music/wood1.mp3').play();
+                } else if (type === 20) {
+                    new Audio('/music/glass.mp3').play();
+                }
+            }
         },
     }
 </script>

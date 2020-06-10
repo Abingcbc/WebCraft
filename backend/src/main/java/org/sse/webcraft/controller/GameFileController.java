@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.sse.webcraft.mapper.GameFileMapper;
 import org.sse.webcraft.model.GameFile;
+import org.sse.webcraft.model.ShareFile;
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 
@@ -23,7 +24,8 @@ public class GameFileController {
     public int createGameFile(@RequestBody GameFile gameFile,
                              HttpServletResponse response) {
         log.info(gameFile.getUsername());
-        return gameFileMapper.createNewGameFile(gameFile);
+        gameFileMapper.createNewGameFile(gameFile);
+        return gameFile.getFileId();
     }
 
     @GetMapping("/file/{username}/{fileId}")
@@ -51,9 +53,15 @@ public class GameFileController {
 
     @GetMapping("/code/{fileId}")
     public String getFileShareCode(@PathVariable int fileId) {
+        GameFile gameFile = gameFileMapper.getGameFileByFileId(fileId);
+        ShareFile shareFile = new ShareFile();
+        shareFile.setFilename(gameFile.getFilename());
+        shareFile.setFileContent(gameFile.getFileContent());
+        shareFile.setWorldSize(gameFile.getWorldSize());
+        gameFileMapper.createShareFile(shareFile);
         BASE64Encoder encoder = new BASE64Encoder();
-        String result = encoder.encode(String.valueOf(fileId).getBytes());
-        log.info(result);
+        String result = encoder.encode(String.valueOf(shareFile.getFileId()).getBytes());
+        log.info(shareFile.getFileId() + " " + result);
         return result;
     }
 
@@ -68,9 +76,13 @@ public class GameFileController {
             e.printStackTrace();
             return null;
         }
-        GameFile oldGameFile = gameFileMapper.getGameFileByFileId(fileId);
-        oldGameFile.setUsername(username);
-        gameFileMapper.createNewGameFile(oldGameFile);
-        return oldGameFile;
+        ShareFile shareFile = gameFileMapper.getShareFileByFileId(fileId);
+        GameFile gameFile = new GameFile();
+        gameFile.setFilename(shareFile.getFilename());
+        gameFile.setFileContent(shareFile.getFileContent());
+        gameFile.setWorldSize(shareFile.getWorldSize());
+        gameFile.setUsername(username);
+        gameFileMapper.createNewGameFile(gameFile);
+        return gameFile;
     }
 }

@@ -450,7 +450,10 @@ var FirstPersonControls = function (scene, camera, domElement,
 
             // 创造模式
             if (this.moveUp) {
-                this.camera.position.y += delta * this.movementSpeed;
+                if (this.boxHelper.isBlockExist(Math.round(this.camera.position.x/100),
+                    Math.round((this.camera.position.y+100+delta*this.movementSpeed)/100) ,
+                    Math.round(this.camera.position.z/100)) === -1)
+                    this.camera.position.y += delta * this.movementSpeed;
             }
             if (this.moveDown) {
                 let minHeight = getHeight(this.camera.position.y,
@@ -557,11 +560,12 @@ var FirstPersonControls = function (scene, camera, domElement,
                                 Math.floor(selectedBox.object.position.z / 100));
                             this.scene.remove(this.scene.getObjectById(selectedBox.object.id));
                             if (Math.round(selectedBox.object.position.x/100) === Math.round(this.camera.position.x/100) &&
-                            Math.round(selectedBox.object.position.z/100) === Math.round(this.camera.position.z)/100) {
+                            Math.round(selectedBox.object.position.z/100) === Math.round(this.camera.position.z/100)) {
                                 if (this.jump === 0) {
                                     this.jump = 2;
                                 }
-                                this.minJumpHeight = this.camera.position.y - 100;
+                                this.minJumpHeight = getHeight(this.camera.position.y,
+                                    this.data[Math.round(selectedBox.object.position.x/100)][Math.round(selectedBox.object.position.z/100)]) *100 + 150;
                             }
                         }
                     }
@@ -595,10 +599,22 @@ var FirstPersonControls = function (scene, camera, domElement,
     document.addEventListener('mousedown', _onMouseDown, false);
     document.addEventListener('mouseup', _onMouseUp, false);
     document.addEventListener('pointerlockchange', escHandler, false );
-    this.domElement.addEventListener('mousewheel', this.boxHelper.onMouseWheelHandler, false);
 
+    document.addEventListener('mousewheel', this.boxHelper.onMouseWheelHandler);
     window.addEventListener('keydown', _onKeyDown, false);
     window.addEventListener('keyup', _onKeyUp, false);
+
+    this.dispose = function() {
+        this.domElement.removeEventListener('contextmenu', contextmenu, false);
+        document.removeEventListener('mousemove', _onMouseMove, false);
+        document.removeEventListener('mousedown', _onMouseDown, false)
+        document.removeEventListener('mouseup', _onMouseUp, false)
+        document.removeEventListener('pointerlockchange', escHandler, false )
+        document.removeEventListener('mousewheel', this.boxHelper.onMouseWheelHandler);
+        window.removeEventListener('keydown', _onKeyDown, false);
+        window.removeEventListener('keyup', _onKeyUp, false);
+        document.exitPointerLock();
+    }
 
     function bind(scope, fn) {
         return function () {
@@ -619,6 +635,7 @@ var FirstPersonControls = function (scene, camera, domElement,
     }
 
     this.handleResize();
+
 
     setOrientation(this);
 
